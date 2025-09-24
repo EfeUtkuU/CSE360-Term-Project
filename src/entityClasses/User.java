@@ -27,7 +27,7 @@ public class User {
     private String emailAddress;
     private boolean adminRole;
     private boolean Student;
-    private boolean role2;
+    private boolean Staff;
     
     
     /*****
@@ -69,7 +69,7 @@ public class User {
         this.emailAddress = ea;
         this.adminRole = r1;
         this.Student = r2;
-        this.role2 = r3;
+        this.Staff = r3;
     }
 
     
@@ -102,16 +102,16 @@ public class User {
 
     
     /*****
-     * <p> Method: void setRole2User(boolean role) </p>
+     * <p> Method: void setStaffUser(boolean role) </p>
      * 
-     * <p> Description: This setter defines the role2 attribute. </p>
+     * <p> Description: This setter defines the Staff attribute. </p>
      * 
-     * @param role is a boolean that specifies if this user in playing role2.
+     * @param role is a boolean that specifies if this user in playing Staff.
      * 
      */
-    // Sets the role2 user.
-    public void setRole2User(boolean role) {
-    	this.role2=role;
+    // Sets the Staff user.
+    public void setStaffUser(boolean role) {
+    	this.Staff=role;
     }
 
     
@@ -232,15 +232,15 @@ public class User {
 
     
     /*****
-     * <p> Method: String getRole2() </p>
+     * <p> Method: String getStaff() </p>
      * 
-     * <p> Description: This getter returns the value of the role2 attribute. </p>
+     * <p> Description: This getter returns the value of the Staff attribute. </p>
      * 
      * @return a String of "TRUE" or "FALSE" based on state of the attribute
 	 *
      */
-    // Gets the current value of the role2 attribute.
-    public boolean getNewRole2() { return role2; }
+    // Gets the current value of the Staff attribute.
+    public boolean getNewStaff() { return Staff; }
 
         
     /*****
@@ -256,7 +256,7 @@ public class User {
     	int numRoles = 0;
     	if (adminRole) numRoles++;
     	if (Student) numRoles++;
-    	if (role2) numRoles++;
+    	if (Staff) numRoles++;
     	return numRoles;
     }
 }
