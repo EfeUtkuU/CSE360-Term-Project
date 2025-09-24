@@ -1,6 +1,6 @@
 package guiStudent;
 
-public class ModelRole1Home {
+public class ModelStudentHome {
 
 /*******
  * <p> Title: ModelRole1Home Class. </p>
