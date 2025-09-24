@@ -1,6 +1,7 @@
 package guiAdminHome;
 
 import database.Database;
+import java.util.List;
 
 /*******
  * <p> Title: GUIAdminHomePage Class. </p>
@@ -88,12 +89,80 @@ public class ControllerAdminHome {
 	 * <p> Description: Protected method that is currently a stub informing the user that
 	 * this function has not yet been implemented. </p>
 	 */
-	protected static void manageInvitations () {
-		System.out.println("\n*** WARNING ***: Manage Invitations Not Yet Implemented");
-		ViewAdminHome.alertNotImplemented.setTitle("*** WARNING ***");
-		ViewAdminHome.alertNotImplemented.setHeaderText("Manage Invitations Issue");
-		ViewAdminHome.alertNotImplemented.setContentText("Manage Invitations Not Yet Implemented");
-		ViewAdminHome.alertNotImplemented.showAndWait();
+	protected static void manageInvitations() {
+	    // Pull invitations from DB
+	    List<String[]> invitations = theDatabase.getAllInvitations();
+
+	    // New stage for invitation management
+	    javafx.stage.Stage stage = new javafx.stage.Stage();
+	    stage.setTitle("Manage Invitations");
+	    stage.initOwner(ViewAdminHome.theStage);
+
+	    javafx.scene.layout.Pane pane = new javafx.scene.layout.Pane();
+	    double y = 20;
+
+	    // Header
+	    javafx.scene.control.Label header = new javafx.scene.control.Label("Outgoing Invitations");
+	    header.setFont(javafx.scene.text.Font.font("Arial", 20));
+	    header.setLayoutX(20);
+	    header.setLayoutY(y);
+	    pane.getChildren().add(header);
+
+	    y += 40;
+
+	    // Column headers
+	    javafx.scene.control.Label lblEmail = new javafx.scene.control.Label("Email");
+	    lblEmail.setLayoutX(20); lblEmail.setLayoutY(y);
+
+	    javafx.scene.control.Label lblRole = new javafx.scene.control.Label("Role");
+	    lblRole.setLayoutX(250); lblRole.setLayoutY(y);
+
+	    javafx.scene.control.Label lblAccepted = new javafx.scene.control.Label("Accepted");
+	    lblAccepted.setLayoutX(350); lblAccepted.setLayoutY(y);
+
+	    javafx.scene.control.Label lblAction = new javafx.scene.control.Label("Action");
+	    lblAction.setLayoutX(450); lblAction.setLayoutY(y);
+
+	    pane.getChildren().addAll(lblEmail, lblRole, lblAccepted, lblAction);
+
+	    y += 30;
+
+	    // Build one row per invitation
+	    for (String[] inv : invitations) {
+	        String code = inv[0];
+	        String email = inv[1];
+	        String role = inv[2];
+	        String accepted = inv[3];
+
+	        javafx.scene.control.Label emailLbl = new javafx.scene.control.Label(email);
+	        emailLbl.setLayoutX(20); emailLbl.setLayoutY(y);
+
+	        javafx.scene.control.Label roleLbl = new javafx.scene.control.Label(role);
+	        roleLbl.setLayoutX(250); roleLbl.setLayoutY(y);
+
+	        javafx.scene.control.Label acceptedLbl = new javafx.scene.control.Label(accepted);
+	        acceptedLbl.setLayoutX(350); acceptedLbl.setLayoutY(y);
+
+	        javafx.scene.control.Button deleteBtn = new javafx.scene.control.Button("Delete");
+	        deleteBtn.setLayoutX(450); deleteBtn.setLayoutY(y - 5);
+
+	        // Handle delete
+	        deleteBtn.setOnAction(e -> {
+	            theDatabase.removeInvitationAfterUse(code);
+	            pane.getChildren().removeAll(emailLbl, roleLbl, acceptedLbl, deleteBtn);
+	            ViewAdminHome.label_NumberOfInvitations.setText(
+	                "Number of outstanding invitations: " + theDatabase.getNumberOfInvitations()
+	            );
+	        });
+
+	        pane.getChildren().addAll(emailLbl, roleLbl, acceptedLbl, deleteBtn);
+	        y += 30;
+	    }
+
+	    // Show scene
+	    javafx.scene.Scene scene = new javafx.scene.Scene(pane, 600, 400);
+	    stage.setScene(scene);
+	    stage.showAndWait();
 	}
 	
 	/**********
