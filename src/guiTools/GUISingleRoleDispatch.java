@@ -80,8 +80,8 @@ public class GUISingleRoleDispatch {
 			guiAdminHome.ViewAdminHome.displayAdminHome(ps, user);
 		} else if (user.getNewStudent()) {
 			guiStudent.ViewStudentHome.displayStudentHome(ps, user);
-		} else if (user.getNewRole2()) {
-			guiRole2.ViewRole2Home.displayRole2Home(ps, user);
+		} else if (user.getNewStaff()) {
+			guiStaff.ViewStaffHome.displayStaffHome(ps, user);
 		} else {
 			// Invalid role
 			System.out.println("*** ERROR *** GUISingleRoleDispatch was asked to dispatch to " +
