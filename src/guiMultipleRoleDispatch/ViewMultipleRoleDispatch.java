@@ -150,7 +150,7 @@ public class ViewMultipleRoleDispatch {
 		list.add("<Select a role>");
 		if (theDatabase.getCurrentAdminRole()) list.add("Admin");
 		if (theDatabase.getCurrentNewStudent()) list.add("Student");
-		if (theDatabase.getCurrentNewRole2()) list.add("Role2");
+		if (theDatabase.getCurrentNewStaff()) list.add("Staff");
 		combobox_SelectRole.setItems(FXCollections.observableArrayList(list));
 
 		setupButtonUI(button_PerformRole, "Dialog", 16, 100, Pos.CENTER, 495, 105);
