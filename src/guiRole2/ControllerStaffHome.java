@@ -1,6 +1,6 @@
-package guiRole2;
+package guiStaff;
 
-public class ControllerRole2Home {
+public class ControllerStaffHome {
 	
 	/*-*******************************************************************************************
 
@@ -9,12 +9,12 @@ public class ControllerRole2Home {
 	**********************************************************************************************/
 	
 	protected static void performUpdate () {
-		guiUserUpdate.ViewUserUpdate.displayUserUpdate(ViewRole2Home.theStage, ViewRole2Home.theUser);
+		guiUserUpdate.ViewUserUpdate.displayUserUpdate(ViewStaffHome.theStage, ViewStaffHome.theUser);
 	}	
 
 	
 	protected static void performLogout() {
-		guiUserLogin.ViewUserLogin.displayUserLogin(ViewRole2Home.theStage);
+		guiUserLogin.ViewUserLogin.displayUserLogin(ViewStaffHome.theStage);
 	}
 	
 	protected static void performQuit() {
