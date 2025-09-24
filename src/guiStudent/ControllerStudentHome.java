@@ -1,6 +1,6 @@
 package guiStudent;
 
-public class ControllerRole1Home {
+public class ControllerStudentHome {
 
 	/*-*******************************************************************************************
 
@@ -22,7 +22,7 @@ public class ControllerRole1Home {
 	 * 
 	 */
 	protected static void performLogout() {
-		guiUserLogin.ViewUserLogin.displayUserLogin(ViewRole1Home.theStage);
+		guiUserLogin.ViewUserLogin.displayUserLogin(ViewStudentHome.theStage);
 	}
 	
 	
