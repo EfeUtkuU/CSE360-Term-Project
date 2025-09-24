@@ -26,7 +26,7 @@ public class User {
     private String preferredFirstName;
     private String emailAddress;
     private boolean adminRole;
-    private boolean role1;
+    private boolean Student;
     private boolean role2;
     
     
@@ -68,7 +68,7 @@ public class User {
         this.preferredFirstName = pfn;
         this.emailAddress = ea;
         this.adminRole = r1;
-        this.role1 = r2;
+        this.Student = r2;
         this.role2 = r3;
     }
 
@@ -88,16 +88,16 @@ public class User {
 
     
     /*****
-     * <p> Method: void setRole1User(boolean role) </p>
+     * <p> Method: void setStudentUser(boolean role) </p>
      * 
-     * <p> Description: This setter defines the role1 attribute. </p>
+     * <p> Description: This setter defines the Student attribute. </p>
      * 
-     * @param role is a boolean that specifies if this user in playing role1.
+     * @param role is a boolean that specifies if this user in playing Student.
      * 
      */
-    // Sets the role1 user.
-    public void setRole1User(boolean role) {
-    	this.role1=role;
+    // Sets the Student user.
+    public void setStudentUser(boolean role) {
+    	this.Student=role;
     }
 
     
@@ -220,15 +220,15 @@ public class User {
 
     
     /*****
-     * <p> Method: String getRole1() </p>
+     * <p> Method: String getStudent() </p>
      * 
-     * <p> Description: This getter returns the value of the role1 attribute. </p>
+     * <p> Description: This getter returns the value of the Student attribute. </p>
      * 
      * @return a String of "TRUE" or "FALSE" based on state of the attribute
 	 *
      */
-    // Gets the current value of the role1 attribute.
-	public boolean getNewRole1() { return role1; }
+    // Gets the current value of the Student attribute.
+	public boolean getNewStudent() { return Student; }
 
     
     /*****
@@ -255,7 +255,7 @@ public class User {
     public int getNumRoles() {
     	int numRoles = 0;
     	if (adminRole) numRoles++;
-    	if (role1) numRoles++;
+    	if (Student) numRoles++;
     	if (role2) numRoles++;
     	return numRoles;
     }
