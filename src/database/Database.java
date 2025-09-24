@@ -1085,5 +1085,32 @@ public class Database {
 	        e.printStackTrace();
 	    }
 	}
+	public List<String[]> getAllInvitations() {
+	    List<String[]> invitations = new ArrayList<>();
+	    String query = "SELECT code, emailAddress, role FROM InvitationCodes";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        ResultSet rs = pstmt.executeQuery();
+	        while (rs.next()) {
+	            String code = rs.getString("code");
+	            String email = rs.getString("emailAddress");
+	            String role = rs.getString("role");
 
+	            // Check if this invitation has been accepted (email exists in userDB)
+	            boolean accepted = false;
+	            String checkUser = "SELECT COUNT(*) FROM userDB WHERE emailAddress = ?";
+	            try (PreparedStatement checkStmt = connection.prepareStatement(checkUser)) {
+	                checkStmt.setString(1, email);
+	                ResultSet userRs = checkStmt.executeQuery();
+	                if (userRs.next()) {
+	                    accepted = userRs.getInt(1) > 0;
+	                }
+	            }
+
+	            invitations.add(new String[] { code, email, role, accepted ? "Yes" : "No" });
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return invitations;
+	}
 }
