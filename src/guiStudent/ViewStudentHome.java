@@ -81,7 +81,7 @@ public class ViewStudentHome {
 	
 
 	private static Scene theViewStudentHomeScene;	// The shared Scene each invocation populates
-	protected static final int theRole = 2;		// Admin: 1; Student: 2; Role2: 3
+	protected static final int theRole = 2;		// Admin: 1; Student: 2; Staff: 3
 
 	/*-*******************************************************************************************
 
@@ -141,7 +141,7 @@ public class ViewStudentHome {
 	 * each GUI object.</p>
 	 * 
 	 * This is a singleton and is only performed once.  Subsequent uses fill in the changeable
-	 * fields using the displayRole2Home method.</p>
+	 * fields using the displayStaffHome method.</p>
 	 * 
 	 */
 	private ViewStudentHome() {
