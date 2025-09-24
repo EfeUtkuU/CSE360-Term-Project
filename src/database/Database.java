@@ -57,7 +57,7 @@ public class Database {
 	private String currentEmailAddress;
 	private boolean currentAdminRole;
 	private boolean currentNewStudent;
-	private boolean currentNewRole2;
+	private boolean currentNewStaff;
 
 	/*******
 	 * <p> Method: Database </p>
@@ -114,7 +114,7 @@ public class Database {
 				+ "emailAddress VARCHAR(255), "
 				+ "adminRole BOOL DEFAULT FALSE, "
 				+ "newStudent BOOL DEFAULT FALSE, "
-				+ "newRole2 BOOL DEFAULT FALSE)";
+				+ "newStaff BOOL DEFAULT FALSE)";
 		statement.execute(userTable);
 		
 		// Create the invitation codes table
@@ -181,7 +181,7 @@ public class Database {
  */
 	public void register(User user) throws SQLException {
 		String insertUser = "INSERT INTO userDB (userName, password, firstName, middleName, "
-				+ "lastName, preferredFirstName, emailAddress, adminRole, newStudent, newRole2) "
+				+ "lastName, preferredFirstName, emailAddress, adminRole, newStudent, newStaff) "
 				+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 		try (PreparedStatement pstmt = connection.prepareStatement(insertUser)) {
 			currentUsername = user.getUserName();
@@ -211,8 +211,8 @@ public class Database {
 			currentNewStudent = user.getNewStudent();
 			pstmt.setBoolean(9, currentNewStudent);
 			
-			currentNewRole2 = user.getNewRole2();
-			pstmt.setBoolean(10, currentNewRole2);
+			currentNewStaff = user.getNewStaff();
+			pstmt.setBoolean(10, currentNewStaff);
 			
 			pstmt.executeUpdate();
 		}
@@ -297,7 +297,7 @@ public class Database {
 	}
 
 	/*******
-	 * <p> Method: boolean loginRole2(User user) </p>
+	 * <p> Method: boolean loginStaff(User user) </p>
 	 * 
 	 * <p> Description: Check to see that a user with the specified username, password, and role
 	 * 		is the same as a row in the table for the username, password, and role. </p>
@@ -308,9 +308,9 @@ public class Database {
 	 * 
 	 */
 	// Validates a reviewer user's login credentials.
-	public boolean loginRole2(User user) {
+	public boolean loginStaff(User user) {
 		String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
-				+ "newRole2 = TRUE";
+				+ "newStaff = TRUE";
 		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 			pstmt.setString(1, user.getUserName());
 			pstmt.setString(2, user.getPassword());
@@ -367,7 +367,7 @@ public class Database {
 		int numberOfRoles = 0;
 		if (user.getAdminRole()) numberOfRoles++;
 		if (user.getNewStudent()) numberOfRoles++;
-		if (user.getNewRole2()) numberOfRoles++;
+		if (user.getNewStaff()) numberOfRoles++;
 		return numberOfRoles;
 	}	
 
@@ -830,7 +830,7 @@ public class Database {
 	    	currentEmailAddress = rs.getString(8);
 	    	currentAdminRole = rs.getBoolean(9);
 	    	currentNewStudent = rs.getBoolean(10);
-	    	currentNewRole2 = rs.getBoolean(11);
+	    	currentNewStaff = rs.getBoolean(11);
 			return true;
 	    } catch (SQLException e) {
 			return false;
@@ -885,16 +885,16 @@ public class Database {
 				return false;
 			}
 		}
-		if (role.compareTo("Role2") == 0) {
-			String query = "UPDATE userDB SET newRole2 = ? WHERE username = ?";
+		if (role.compareTo("Staff") == 0) {
+			String query = "UPDATE userDB SET newStaff = ? WHERE username = ?";
 			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 				pstmt.setString(1, value);
 				pstmt.setString(2, username);
 				pstmt.executeUpdate();
 				if (value.compareTo("true") == 0)
-					currentNewRole2 = true;
+					currentNewStaff = true;
 				else
-					currentNewRole2 = false;
+					currentNewStaff = false;
 				return true;
 			} catch (SQLException e) {
 				return false;
@@ -1005,14 +1005,14 @@ public class Database {
 
 	
 	/*******
-	 * <p> Method: boolean getCurrentNewRole2() </p>
+	 * <p> Method: boolean getCurrentNewStaff() </p>
 	 * 
 	 * <p> Description: Get the current user's Reviewer role attribute.</p>
 	 * 
 	 * @return true if this user plays a Reviewer role, else false
 	 *  
 	 */
-	public boolean getCurrentNewRole2() { return currentNewRole2;};
+	public boolean getCurrentNewStaff() { return currentNewStaff;};
 
 	
 	/*******
