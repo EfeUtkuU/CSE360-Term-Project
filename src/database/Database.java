@@ -1113,4 +1113,41 @@ public class Database {
 	    }
 	    return invitations;
 	}
+		public List<String[]> getAllUsers() {
+	    List<String[]> users = new ArrayList<>();
+	    String query = "SELECT userName, firstName, lastName, emailAddress, " +
+	                   "adminRole, newStudent, newStaff FROM userDB";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        ResultSet rs = pstmt.executeQuery();
+	        while (rs.next()) {
+	            users.add(new String[] {
+	                rs.getString("userName"),
+	                rs.getString("firstName"),
+	                rs.getString("lastName"),
+	                rs.getString("emailAddress"),
+	                rs.getBoolean("adminRole") ? "Admin" : "",
+	                rs.getBoolean("newStudent") ? "Student" : "",
+	                rs.getBoolean("newStaff") ? "Staff" : ""
+	            });
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return users;
+	}
+	
+	// Delete a user by username
+	public boolean deleteUser(String username) {
+	    try {
+	        PreparedStatement ps = connection.prepareStatement(
+	            "DELETE FROM userDB WHERE userName = ?");
+	        ps.setString(1, username);
+	        int rows = ps.executeUpdate();
+	        return rows > 0;
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return false;
+	}
+
 }
