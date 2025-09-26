@@ -1,7 +1,22 @@
 package guiAdminHome;
 
 import database.Database;
+
 import java.util.List;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.ButtonType;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+
+  // for the list of users
+
 
 /*******
  * <p> Title: GUIAdminHomePage Class. </p>
@@ -189,8 +204,10 @@ public class ControllerAdminHome {
 	 * <p> Description: Protected method that is currently a stub informing the user that
 	 * this function has not yet been implemented. </p>
 	 */
+
+
 	protected static void deleteUser() {
-		List<String[]> users = theDatabase.getAllUsers();
+	    List<String[]> users = theDatabase.getAllUsers();
 
 	    Stage stage = new Stage();
 	    stage.setTitle("Delete Users");
@@ -277,7 +294,20 @@ public class ControllerAdminHome {
 
 	        pane.getChildren().addAll(userLbl, nameLbl, emailLbl, rolesLbl, deleteBtn);
 	        y += 25;
+	    }
+
+	    // Close button
+	    Button closeBtn = new Button("Close");
+	    closeBtn.setLayoutX(300);
+	    closeBtn.setLayoutY(y + 20);
+	    closeBtn.setOnAction(e -> stage.close());
+	    pane.getChildren().add(closeBtn);
+
+	    Scene scene = new Scene(pane, 800, 500);
+	    stage.setScene(scene);
+	    stage.showAndWait();
 	}
+
 	
 	/**********
 	 * <p> 
@@ -287,8 +317,9 @@ public class ControllerAdminHome {
 	 * <p> Description: Protected method that is currently a stub informing the user that
 	 * this function has not yet been implemented. </p>
 	 */
-	protected static void listUsers() {
-		 List<String[]> users = theDatabase.getAllUsers();
+
+		protected static void listUsers() {
+		    List<String[]> users = theDatabase.getAllUsers();
 
 		    javafx.stage.Stage stage = new javafx.stage.Stage();
 		    stage.setTitle("List of Users");
@@ -358,6 +389,7 @@ public class ControllerAdminHome {
 		    stage.setScene(scene);
 		    stage.showAndWait();
 		
+
 	}
 	
 	/**********
