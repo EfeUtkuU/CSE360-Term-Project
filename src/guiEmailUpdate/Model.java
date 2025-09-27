@@ -161,7 +161,7 @@ public class Model {
 				else if (currentChar == '@') {
 					nextState = 2;
 				}
-				else if (currentChar == '.') {
+				else if (currentChar == '.' || currentChar == '_' || currentChar == '-') {
 					nextState = 0;  
 					domainPartCounter = 0;
 				}

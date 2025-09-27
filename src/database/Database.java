@@ -9,7 +9,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.sql.Timestamp;
+
 import entityClasses.User;
+
 
 /*******
  * <p> Title: Database Class. </p>
@@ -86,7 +91,7 @@ public class Database {
 			connection = DriverManager.getConnection(DB_URL, USER, PASS);
 			statement = connection.createStatement(); 
 			// You can use this command to clear the database and restart from fresh.
-			statement.execute("DROP ALL OBJECTS");
+			//statement.execute("DROP ALL OBJECTS");
 
 			createTables();  // Create the necessary tables if they don't exist
 		} catch (ClassNotFoundException e) {
@@ -114,7 +119,9 @@ public class Database {
 				+ "emailAddress VARCHAR(255), "
 				+ "adminRole BOOL DEFAULT FALSE, "
 				+ "newStudent BOOL DEFAULT FALSE, "
-				+ "newStaff BOOL DEFAULT FALSE)";
+				+ "newStaff BOOL DEFAULT FALSE, "
+				+ "oneTimePassword VARCHAR(255), "       
+		        + "otpExpiry TIMESTAMP)";                
 		statement.execute(userTable);
 		
 		// Create the invitation codes table
@@ -180,9 +187,11 @@ public class Database {
  * 
  */
 	public void register(User user) throws SQLException {
-		String insertUser = "INSERT INTO userDB (userName, password, firstName, middleName, "
-				+ "lastName, preferredFirstName, emailAddress, adminRole, newStudent, newStaff) "
-				+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+		String insertUser = "INSERT INTO userDB "
+			    + "(userName, password, firstName, middleName, lastName, "
+			    + "preferredFirstName, emailAddress, adminRole, newStudent, newStaff, "
+			    + "oneTimePassword, otpExpiry) "
+			    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)";
 		try (PreparedStatement pstmt = connection.prepareStatement(insertUser)) {
 			currentUsername = user.getUserName();
 			pstmt.setString(1, currentUsername);
@@ -214,8 +223,12 @@ public class Database {
 			currentNewStaff = user.getNewStaff();
 			pstmt.setBoolean(10, currentNewStaff);
 			
+			
 			pstmt.executeUpdate();
 		}
+		
+		System.out.println("Registering user: " + currentUsername + " | password=" + currentPassword
+		        + " | adminRole=" + user.getAdminRole());
 		
 	}
 	
@@ -243,6 +256,55 @@ public class Database {
 		return userList;
 	}
 
+	/*******
+	 *  <p> Method: List AuthType() </p>
+	 *  
+	 *  <P> Description: Choose an authentication type for the login. </p>
+	 *  
+	 *  @return a enumerated type auth for checking if it has to be authenticated or not.
+	 */
+
+	
+	
+	// Check login with either password or OTP
+	public boolean loginWithPasswordOrOtp(String username, String passwordOrOtp) {
+	    String query = "SELECT password, oneTimePassword, otpExpiry FROM userDB WHERE userName = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        ResultSet rs = pstmt.executeQuery();
+
+	        if (rs.next()) {
+	            String storedPassword = rs.getString("password");
+	            String storedOtp = rs.getString("oneTimePassword");
+	            Timestamp expiry = rs.getTimestamp("otpExpiry");
+
+	            if (storedPassword != null && storedPassword.equals(passwordOrOtp)) {
+	                return true;
+	            }
+
+	            if (storedOtp != null && storedOtp.equals(passwordOrOtp) && expiry != null) {
+	                if (expiry.toInstant().isAfter(java.time.Instant.now())) {
+	                    clearOtp(username);
+	                    return true;
+	                }
+	            }
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return false;
+	}
+
+	public void clearOtp(String username) {
+	    String query = "UPDATE userDB SET oneTimePassword = NULL, otpExpiry = NULL WHERE userName = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        pstmt.executeUpdate();
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	}
+	
 /*******
  * <p> Method: boolean loginAdmin(User user) </p>
  * 
@@ -254,19 +316,19 @@ public class Database {
  * @return true if the specified user has been logged in as an Admin else false.
  * 
  */
-	public boolean loginAdmin(User user){
-		// Validates an admin user's login credentials so the user can login in as an Admin.
-		String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
-				+ "adminRole = TRUE";
-		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-			pstmt.setString(1, user.getUserName());
-			pstmt.setString(2, user.getPassword());
-			ResultSet rs = pstmt.executeQuery();
-			return rs.next();	// If a row is returned, rs.next() will return true		
-		} catch  (SQLException e) {
+	public boolean loginAdmin(User user) {
+	    String query = "SELECT * FROM userDB WHERE userName = ? AND adminRole = TRUE";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, user.getUserName());
+	        ResultSet rs = pstmt.executeQuery();
+
+	        if (rs.next()) {
+	            return loginWithPasswordOrOtp(user.getUserName(), user.getPassword());
+	        }
+	    } catch (SQLException e) {
 	        e.printStackTrace();
 	    }
-		return false;
+	    return false;
 	}
 	
 	
@@ -282,18 +344,18 @@ public class Database {
  * 
  */
 	public boolean loginStudent(User user) {
-		// Validates a student user's login credentials.
-		String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
-				+ "newStudent = TRUE";
-		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-			pstmt.setString(1, user.getUserName());
-			pstmt.setString(2, user.getPassword());
-			ResultSet rs = pstmt.executeQuery();
-			return rs.next();
-		} catch  (SQLException e) {
-		       e.printStackTrace();
-		}
-		return false;
+	    String query = "SELECT * FROM userDB WHERE userName = ? AND newStudent = TRUE";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, user.getUserName());
+	        ResultSet rs = pstmt.executeQuery();
+
+	        if (rs.next()) {
+	            return loginWithPasswordOrOtp(user.getUserName(), user.getPassword());
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return false;
 	}
 
 	/*******
@@ -309,17 +371,18 @@ public class Database {
 	 */
 	// Validates a reviewer user's login credentials.
 	public boolean loginStaff(User user) {
-		String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
-				+ "newStaff = TRUE";
-		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-			pstmt.setString(1, user.getUserName());
-			pstmt.setString(2, user.getPassword());
-			ResultSet rs = pstmt.executeQuery();
-			return rs.next();
-		} catch  (SQLException e) {
-		       e.printStackTrace();
-		}
-		return false;
+	    String query = "SELECT * FROM userDB WHERE userName = ? AND newStaff = TRUE";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, user.getUserName());
+	        ResultSet rs = pstmt.executeQuery();
+
+	        if (rs.next()) {
+	            return loginWithPasswordOrOtp(user.getUserName(), user.getPassword());
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return false;
 	}
 	
 	
@@ -778,6 +841,20 @@ public class Database {
 		return null;
 	}
 	
+	public String getOneTimePassword(String username) {
+	    String query = "SELECT oneTimePassword FROM userDB WHERE userName = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        ResultSet rs = pstmt.executeQuery();
+	        if (rs.next()) {
+	            return rs.getString("oneTimePassword");
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return null;
+	}
+	
 	
 	/*******
 	 * <p> Method: void updateEmailAddress(String username, String emailAddress) </p>
@@ -1013,6 +1090,8 @@ public class Database {
 	 *  
 	 */
 	public boolean getCurrentNewStaff() { return currentNewStaff;};
+	
+	
 
 	
 	/*******
@@ -1113,8 +1192,7 @@ public class Database {
 	    }
 	    return invitations;
 	}
-	
-	public List<String[]> getAllUsers() {
+		public List<String[]> getAllUsers() {
 	    List<String[]> users = new ArrayList<>();
 	    String query = "SELECT userName, firstName, lastName, emailAddress, " +
 	                   "adminRole, newStudent, newStaff FROM userDB";
@@ -1150,5 +1228,52 @@ public class Database {
 	    }
 	    return false;
 	}
+	
+	public String generateOneTimePassword(String username) {
+	    String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	    SecureRandom random = new SecureRandom();
+	    StringBuilder sb = new StringBuilder(6);
+	    for (int i = 0; i < 6; i++) {
+	        sb.append(CHARACTERS.charAt(random.nextInt(CHARACTERS.length())));
+	    }
+	    String otp = sb.toString();
+
+	    LocalDateTime expiry = LocalDateTime.now().plusMinutes(5);
+
+	    String query = "UPDATE userDB SET oneTimePassword = ?, otpExpiry = ? WHERE userName = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, otp);
+	        pstmt.setTimestamp(2, Timestamp.valueOf(expiry));
+	        pstmt.setString(3, username);
+	        pstmt.executeUpdate();
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+
+	    return otp;
+	}
+	
+	public boolean validateOneTimePassword(String username, String otp) {
+	    String query = "SELECT oneTimePassword, otpExpiry FROM userDB WHERE userName = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        ResultSet rs = pstmt.executeQuery();
+	        if (rs.next()) {
+	            String storedOtp = rs.getString("oneTimePassword");
+	            Timestamp expiry = rs.getTimestamp("otpExpiry");
+
+	            if (storedOtp != null && storedOtp.equals(otp) && expiry != null) {
+
+	                if (expiry.toInstant().isAfter(java.time.Instant.now())) {
+	                    return true;
+	                }
+	            }
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return false;
+	}
+
 
 }

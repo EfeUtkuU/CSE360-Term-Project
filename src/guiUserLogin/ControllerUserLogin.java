@@ -68,12 +68,19 @@ public class ControllerUserLogin {
 		
 		// Check to see that the login password matches the account password
     	String actualPassword = theDatabase.getCurrentPassword();
+    	String actualOTP = theDatabase.getOneTimePassword(username);
     	
     	if (password.compareTo(actualPassword) != 0) {
-    		ViewUserLogin.alertUsernamePasswordError.setContentText(
-    				"Incorrect username/password. Try again!");
-    		ViewUserLogin.alertUsernamePasswordError.showAndWait();
-    		return;
+    		if(password.compareTo(actualOTP) != 0) {
+        		ViewUserLogin.alertUsernamePasswordError.setContentText(
+        				"Incorrect username/password. Try again!");
+        		ViewUserLogin.alertUsernamePasswordError.showAndWait();
+        		return;
+    		}
+    		else {
+    			password = actualOTP;
+    			theDatabase.clearOtp(username);
+    		}
     	}
 		System.out.println("*** Password is valid for this user");
 		
