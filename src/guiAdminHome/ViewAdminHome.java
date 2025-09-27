@@ -73,7 +73,7 @@ public class ViewAdminHome {
 
 	// GUI Area 2: This area is used to provide status of the system.  This basic foundational code
 	// does not have much current status information to display.
-	protected static Label label_NumberOfInvitations = 
+	public static Label label_NumberOfInvitations = 
 			new Label("Number of Oustanding Invitations: x");
 	protected static Label label_NumberOfUsers = new Label("Number of Users: x");
 	
