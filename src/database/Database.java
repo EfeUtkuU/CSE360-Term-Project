@@ -1138,7 +1138,15 @@ public class Database {
 			se.printStackTrace(); 
 		} 
 	}
-	
+		/*******
+	 * <p> Method: void updateUsername(String oldUsername, String newUsername) </p>
+	 * 
+	 * <p> Description: Updates the username of an existing user in the database. </p>
+	 * 
+	 * @param oldUsername the current username of the user
+	 * @param newUsername the new username to assign to the user
+	 * 
+	 */
 	// Update the username for a user
 	public void updateUsername(String oldUsername, String newUsername) {
 	    String query = "UPDATE userDB SET userName = ? WHERE userName = ?";
@@ -1151,7 +1159,15 @@ public class Database {
 	        e.printStackTrace();
 	    }
 	}
-
+/*******
+	 * <p> Method: void updatePassword(String username, String newPassword) </p>
+	 * 
+	 * <p> Description: Updates the password of a user in the database. </p>
+	 * 
+	 * @param username the username of the user whose password is being updated
+	 * @param newPassword the new password to assign
+	 * 
+	 */
 	// Update the password for a user
 	public void updatePassword(String username, String newPassword) {
 	    String query = "UPDATE userDB SET password = ? WHERE userName = ?";
@@ -1164,6 +1180,16 @@ public class Database {
 	        e.printStackTrace();
 	    }
 	}
+
+	/*******
+	 * <p> Method: List getAllInvitations() </p>
+	 * 
+	 * <p> Description: Retrieves all invitation codes from the InvitationCodes table, 
+	 * along with email, role, and acceptance status (based on whether the email exists in userDB). </p>
+	 * 
+	 * @return a List of String arrays: [code, emailAddress, role, accepted("Yes"/"No")]
+	 * 
+	 */
 	public List<String[]> getAllInvitations() {
 	    List<String[]> invitations = new ArrayList<>();
 	    String query = "SELECT code, emailAddress, role FROM InvitationCodes";
@@ -1192,6 +1218,17 @@ public class Database {
 	    }
 	    return invitations;
 	}
+
+		/*******
+	 * <p> Method: List getAllUsers() </p>
+	 * 
+	 * <p> Description: Retrieves all user accounts from userDB with their username, 
+	 * name, email, and roles (Admin, Student, Staff). </p>
+	 * 
+	 * @return a List of String arrays: 
+	 *         [username, firstName, lastName, emailAddress, adminRole, newStudent, newStaff]
+	 * 
+	 */
 		public List<String[]> getAllUsers() {
 	    List<String[]> users = new ArrayList<>();
 	    String query = "SELECT userName, firstName, lastName, emailAddress, " +
@@ -1214,7 +1251,16 @@ public class Database {
 	    }
 	    return users;
 	}
-	
+		/*******
+	 * <p> Method: boolean deleteUser(String username) </p>
+	 * 
+	 * <p> Description: Deletes a user from userDB by their username. </p>
+	 * 
+	 * @param username the username of the user to be deleted
+	 * 
+	 * @return true if the user was successfully deleted, false otherwise
+	 * 
+	 */
 	// Delete a user by username
 	public boolean deleteUser(String username) {
 	    try {
@@ -1228,7 +1274,18 @@ public class Database {
 	    }
 	    return false;
 	}
-	
+
+	/*******
+	 * <p> Method: String generateOneTimePassword(String username) </p>
+	 * 
+	 * <p> Description: Generates a 6-character one-time password (OTP), sets its expiration 
+	 * to 5 minutes from now, and updates the user's record in userDB. </p>
+	 * 
+	 * @param username the username for which the OTP is generated
+	 * 
+	 * @return the generated OTP string
+	 * 
+	 */
 	public String generateOneTimePassword(String username) {
 	    String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 	    SecureRandom random = new SecureRandom();
@@ -1253,6 +1310,18 @@ public class Database {
 	    return otp;
 	}
 	
+		/*******
+	 * <p> Method: boolean validateOneTimePassword(String username, String otp) </p>
+	 * 
+	 * <p> Description: Validates the given OTP for a user by checking if it matches 
+	 * the stored OTP and has not expired. </p>
+	 * 
+	 * @param username the username associated with the OTP
+	 * @param otp the one-time password to validate
+	 * 
+	 * @return true if the OTP matches and is not expired, false otherwise
+	 * 
+	 */
 	public boolean validateOneTimePassword(String username, String otp) {
 	    String query = "SELECT oneTimePassword, otpExpiry FROM userDB WHERE userName = ?";
 	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
