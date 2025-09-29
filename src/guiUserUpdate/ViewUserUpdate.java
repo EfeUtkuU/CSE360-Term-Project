@@ -1,7 +1,5 @@
 package guiUserUpdate;
 
-import java.util.Optional;
-
 import database.Database;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -118,7 +116,6 @@ public class ViewUserUpdate {
 
 	public static Scene theUserUpdateScene = null;	// The Scene each invocation populates
 
-	private static Optional<String> result;		// The result from a pop-up dialog
 
 	/*-********************************************************************************************
 
@@ -298,15 +295,8 @@ public class ViewUserUpdate {
         		200, 350);
         setupButtonUI(button_UpdatePreferredFirstName, "Dialog", 18, 275, Pos.CENTER, 500, 343);
         button_UpdatePreferredFirstName.setOnAction((event) -> 
-        	{result = dialogUpdatePreferredFirstName.showAndWait();
-    		result.ifPresent(name -> 
-    		theDatabase.updatePreferredFirstName(theUser.getUserName(), result.get()));
-    		theDatabase.getUserAccountDetails(theUser.getUserName());
-    		String newName = theDatabase.getCurrentPreferredFirstName();
-           	theUser.setPreferredFirstName(newName);
-         	if (newName == null || newName.length() < 1)label_CurrentPreferredFirstName.setText("<none>");
-        	else label_CurrentPreferredFirstName.setText(newName);
-     		});
+        	{guiPreferredName.Controller.openUpdateWindow(theUser, label_CurrentPreferredFirstName, theDatabase);
+    		});
         
         // Email Address
         setupLabelUI(label_EmailAddress, "Arial", 18, 190, Pos.BASELINE_RIGHT, 5, 400);

@@ -46,20 +46,20 @@ public class Model {
     public static String evaluateFirstName(String input) {
         firstnameErrorMessage = "";
         firstnameIndexofError = 0;
-        inputLine = input;
+        inputLine = input == null ? "" : input;
         currentCharNdx = 0;
 
-        if (input == null || input.isEmpty()) {
+        if (inputLine.isEmpty()) {
             return "The name cannot be empty!\n";
         }
 
-        if (input.length() > 32) {
+        if (inputLine.length() > 32) {
             return "The name cannot be more than 32 characters!\n";
         }
 
         state = 0; // start state
         running = true;
-        currentChar = input.charAt(0);
+        currentChar = inputLine.charAt(0);
 
         System.out.println("\nState   Char   -> Next");
 
@@ -69,37 +69,24 @@ public class Model {
             switch (state) {
                 case 0:
                     if (Character.isUpperCase(currentChar)) {
-                        nextState = 1;
-                    } 
-                    else {
-                        firstnameErrorMessage = "Each word must start with an uppercase letter!\n";
+                        nextState = 1; // valid start
+                    } else {
+                        firstnameErrorMessage = "The name must start with an uppercase letter!\n";
                         running = false;
                     }
                     break;
 
                 case 1:
                     if (Character.isLowerCase(currentChar)) {
-                        nextState = 1;
-                    } 
-                    else if (currentChar == ' ') {
-                        nextState = 2;
-                    } 
-                    else if (Character.isUpperCase(currentChar)) {
-                        firstnameErrorMessage = "Only the first letter of each word can be uppercase!\n";
+                        nextState = 1; // keep reading lowercase letters
+                    } else if (Character.isUpperCase(currentChar)) {
+                        firstnameErrorMessage = "Only the first letter can be uppercase!\n";
                         running = false;
-                    } 
-                    else {
-                        firstnameErrorMessage = "Digits and special characters are not allowed in names!\n";
+                    } else if (Character.isDigit(currentChar)) {
+                        firstnameErrorMessage = "Digits are not allowed in names!\n";
                         running = false;
-                    }
-                    break;
-
-                case 2:
-                    if (Character.isUpperCase(currentChar)) {
-                        nextState = 1;
-                    } 
-                    else {
-                        firstnameErrorMessage = "Each word must start with an uppercase letter!\n";
+                    } else if (!Character.isLetter(currentChar)) {
+                        firstnameErrorMessage = "Special characters and spaces are not allowed in names!\n";
                         running = false;
                     }
                     break;
@@ -117,12 +104,8 @@ public class Model {
 
         if (firstnameErrorMessage.isEmpty()) {
             if (state == 1) {
-                return "";
-            } 
-            else if (state == 2) {
-                return "Name cannot end with a space!\n";
-            } 
-            else {
+                return ""; // valid
+            } else {
                 return "Invalid name format!\n";
             }
         }

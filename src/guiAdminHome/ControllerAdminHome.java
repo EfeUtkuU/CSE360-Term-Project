@@ -53,36 +53,38 @@ public class ControllerAdminHome {
 	 * an account and a specific role. </p>
 	 */
 	protected static void performInvitation () {
-		// Verify that the email address is valid - If not alert the user and return
-		String emailAddress = ViewAdminHome.text_InvitationEmailAddress.getText();
-		if (invalidEmailAddress(emailAddress)) {
-			return;
-		}
-		
-		// Check to ensure that we are not sending a second message with a new invitation code to
-		// the same email address.  
-		if (theDatabase.emailaddressHasBeenUsed(emailAddress)) {
-			ViewAdminHome.alertEmailError.setContentText(
-					"An invitation has already been sent to this email address.");
-			ViewAdminHome.alertEmailError.showAndWait();
-			return;
-		}
-		
-		// Inform the user that the invitation has been sent and display the invitation code
-		String theSelectedRole = (String) ViewAdminHome.combobox_SelectRole.getValue();
-		String invitationCode = theDatabase.generateInvitationCode(emailAddress,
-				theSelectedRole);
-		String msg = "Code: " + invitationCode + " for role " + theSelectedRole + 
-				" was sent to: " + emailAddress;
-		System.out.println(msg);
-		ViewAdminHome.alertEmailSent.setContentText(msg);
-		ViewAdminHome.alertEmailSent.showAndWait();
-		
-		// Update the Admin Home pages status
-		ViewAdminHome.text_InvitationEmailAddress.setText("");
-		ViewAdminHome.label_NumberOfInvitations.setText("Number of outstanding invitations: " + 
-				theDatabase.getNumberOfInvitations());
+	    String emailAddress = ViewAdminHome.text_InvitationEmailAddress.getText();
+
+	    // Validate email with FSM (if invalid, stop here)
+	    if (invalidEmailAddress(emailAddress)) {
+	        return;
+	    }
+
+	    // Check if already used
+	    if (theDatabase.emailaddressHasBeenUsed(emailAddress)) {
+	        ViewAdminHome.label_EmailError.setText(
+	            "An invitation has already been sent to this email address.");
+	        return;
+	    }
+
+	    // Clear error label
+	    ViewAdminHome.label_EmailError.setText("");
+
+	    // Normal flow...
+	    String theSelectedRole = (String) ViewAdminHome.combobox_SelectRole.getValue();
+	    String invitationCode = theDatabase.generateInvitationCode(emailAddress, theSelectedRole);
+	    String msg = "Code: " + invitationCode + " for role " + theSelectedRole + 
+	                 " was sent to: " + emailAddress;
+	    System.out.println(msg);
+	    ViewAdminHome.alertEmailSent.setContentText(msg);
+	    ViewAdminHome.alertEmailSent.showAndWait();
+
+	    // Reset input
+	    ViewAdminHome.text_InvitationEmailAddress.setText("");
+	    ViewAdminHome.label_NumberOfInvitations.setText("Number of outstanding invitations: " + 
+	            theDatabase.getNumberOfInvitations());
 	}
+
 	
 	/**********
 	 * <p> 
@@ -152,25 +154,25 @@ protected static void deleteUser() {
 	
 	/**********
 	 * <p> 
-	 * 
 	 * Title: invalidEmailAddress () Method. </p>
 	 * 
-	 * <p> Description: Protected method that is intended to check an email address before it is
-	 * used to reduce errors.  The code currently only checks to see that the email address is not
-	 * empty.  In the future, a syntactic check must be performed and maybe there is a way to check
-	 * if a properly email address is active.</p>
-	 * 
-	 * @param emailAddress	This String holds what is expected to be an email address
+	 * <p> Description: Uses FSM to validate an email address and update the error label. </p>
 	 */
 	protected static boolean invalidEmailAddress(String emailAddress) {
-		if (emailAddress.length() == 0) {
-			ViewAdminHome.alertEmailError.setContentText(
-					"Correct the email address and try again.");
-			ViewAdminHome.alertEmailError.showAndWait();
-			return true;
-		}
-		return false;
+	    // Run FSM validation
+	    String errMessage = guiEmailUpdate.Model.checkEmailAddress(emailAddress);
+
+	    if (!errMessage.isEmpty()) {
+	        // Display the FSM’s error message in red under the text field
+	        ViewAdminHome.label_EmailError.setText(errMessage);
+	        return true;
+	    }
+
+	    // Clear any old error messages
+	    ViewAdminHome.label_EmailError.setText("");
+	    return false;
 	}
+
 	
 	/**********
 	 * <p> 
