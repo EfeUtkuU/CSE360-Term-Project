@@ -36,94 +36,78 @@ public class ControllerUserLogin {
 	 * 
 	 */	
 	protected static void doLogin(Stage ts) {
-		theStage = ts;
-		String username = ViewUserLogin.text_Username.getText();
-		String password = ViewUserLogin.text_Password.getText();
-    	boolean loginResult = false;
-    	
-    	String userError = Model.checkForValidUserName(username);
-    	if (!userError.isEmpty()) {
-    	    ViewUserLogin.alertUsernamePasswordError.setContentText(userError);
-    	    ViewUserLogin.alertUsernamePasswordError.showAndWait();
-    	    return;
-    	}
+	    theStage = ts;
+	    String username = ViewUserLogin.text_Username.getText();
+	    String passwordOrOtp = ViewUserLogin.text_Password.getText();
+	    boolean loginResult = false;
 
-    	String passError = Model.evaluatePassword(password);
-    	if (!passError.isEmpty()) {
-    	    ViewUserLogin.alertUsernamePasswordError.setContentText(passError);
-    	    ViewUserLogin.alertUsernamePasswordError.showAndWait();
-    	    return;
-    	}
-    	
-		// Fetch the user and verify the username
-     	if (theDatabase.getUserAccountDetails(username) == false) {
-     		// Don't provide too much information.  Don't say the username is invalid or the
-     		// password is invalid.  Just say the pair is invalid.
-    		ViewUserLogin.alertUsernamePasswordError.setContentText(
-    				"Incorrect username/password. Try again!");
-    		ViewUserLogin.alertUsernamePasswordError.showAndWait();
-    		return;
-    	}
-		System.out.println("*** Username is valid");
-		
-		// Check to see that the login password matches the account password
-    	String actualPassword = theDatabase.getCurrentPassword();
-    	String actualOTP = theDatabase.getOneTimePassword(username);
-    	
-    	if (password.compareTo(actualPassword) != 0) {
-    		if(password.compareTo(actualOTP) != 0) {
-        		ViewUserLogin.alertUsernamePasswordError.setContentText(
-        				"Incorrect username/password. Try again!");
-        		ViewUserLogin.alertUsernamePasswordError.showAndWait();
-        		return;
-    		}
-    		else {
-    			password = actualOTP;
-    			theDatabase.clearOtp(username);
-    		}
-    	}
-		System.out.println("*** Password is valid for this user");
-		
-		// Establish this user's details
-    	User user = new User(username, password, theDatabase.getCurrentFirstName(), 
-    			theDatabase.getCurrentMiddleName(), theDatabase.getCurrentLastName(), 
-    			theDatabase.getCurrentPreferredFirstName(), theDatabase.getCurrentEmailAddress(), 
-    			theDatabase.getCurrentAdminRole(), 
-    			theDatabase.getCurrentNewStudent(), theDatabase.getCurrentNewStaff());
-    	
-    	// See which home page dispatch to use
-		int numberOfRoles = theDatabase.getNumberOfRoles(user);		
-		System.out.println("*** The number of roles: "+ numberOfRoles);
-		if (numberOfRoles == 1) {
-			// Single Account Home Page - The user has no choice here
-			
-			// Admin role
-			if (user.getAdminRole()) {
-				loginResult = theDatabase.loginAdmin(user);
-				if (loginResult) {
-					guiAdminHome.ViewAdminHome.displayAdminHome(theStage, user);
-				}
-			} else if (user.getNewStudent()) {
-				loginResult = theDatabase.loginStudent(user);
-				if (loginResult) {
-					guiStudent.ViewStudentHome.displayStudentHome(theStage, user);
-				}
-			} else if (user.getNewStaff()) {
-				loginResult = theDatabase.loginStaff(user);
-				if (loginResult) {
-					guiStaff.ViewStaffHome.displayStaffHome(theStage, user);
-				}
-				// Other roles
-			} else {
-				System.out.println("***** UserLogin goToUserHome request has an invalid role");
-			}
-		} else if (numberOfRoles > 1) {
-			// Multiple Account Home Page - The user chooses which role to play
-			System.out.println("*** Going to displayMultipleRoleDispatch");
-			guiMultipleRoleDispatch.ViewMultipleRoleDispatch.
-				displayMultipleRoleDispatch(theStage, user);
-		}
+	    // Basic input validation
+	    String userError = Model.checkForValidUserName(username);
+	    if (!userError.isEmpty()) {
+	        ViewUserLogin.alertUsernamePasswordError.setContentText(userError);
+	        ViewUserLogin.alertUsernamePasswordError.showAndWait();
+	        return;
+	    }
+
+	    String passError = Model.evaluatePassword(passwordOrOtp);
+	    if (!passError.isEmpty()) {
+	        ViewUserLogin.alertUsernamePasswordError.setContentText(passError);
+	        ViewUserLogin.alertUsernamePasswordError.showAndWait();
+	        return;
+	    }
+
+	    // Fetch user details from DB
+	    if (!theDatabase.getUserAccountDetails(username)) {
+	        ViewUserLogin.alertUsernamePasswordError.setContentText(
+	                "Incorrect username/password. Try again!");
+	        ViewUserLogin.alertUsernamePasswordError.showAndWait();
+	        return;
+	    }
+	    System.out.println("*** Username is valid");
+
+	    // Validate password or OTP in one place
+	    if (!theDatabase.loginWithPasswordOrOtp(username, passwordOrOtp)) {
+	        ViewUserLogin.alertUsernamePasswordError.setContentText(
+	                "Incorrect username/password. Try again!");
+	        ViewUserLogin.alertUsernamePasswordError.showAndWait();
+	        return;
+	    }
+	    System.out.println("*** Login credentials are valid");
+
+	    // Create User object with details from DB
+	    User user = new User(username, theDatabase.getCurrentPassword(),
+	            theDatabase.getCurrentFirstName(),
+	            theDatabase.getCurrentMiddleName(),
+	            theDatabase.getCurrentLastName(),
+	            theDatabase.getCurrentPreferredFirstName(),
+	            theDatabase.getCurrentEmailAddress(),
+	            theDatabase.getCurrentAdminRole(),
+	            theDatabase.getCurrentNewStudent(),
+	            theDatabase.getCurrentNewStaff());
+
+	    // Decide which home page to show
+	    int numberOfRoles = theDatabase.getNumberOfRoles(user);
+	    System.out.println("*** The number of roles: " + numberOfRoles);
+
+	    if (numberOfRoles == 1) {
+	        if (user.getAdminRole()) {
+	            loginResult = theDatabase.loginAdmin(user);
+	            if (loginResult) guiAdminHome.ViewAdminHome.displayAdminHome(theStage, user);
+	        } else if (user.getNewStudent()) {
+	            loginResult = theDatabase.loginStudent(user);
+	            if (loginResult) guiStudent.ViewStudentHome.displayStudentHome(theStage, user);
+	        } else if (user.getNewStaff()) {
+	            loginResult = theDatabase.loginStaff(user);
+	            if (loginResult) guiStaff.ViewStaffHome.displayStaffHome(theStage, user);
+	        } else {
+	            System.out.println("***** UserLogin goToUserHome request has an invalid role");
+	        }
+	    } else if (numberOfRoles > 1) {
+	        System.out.println("*** Going to displayMultipleRoleDispatch");
+	        guiMultipleRoleDispatch.ViewMultipleRoleDispatch.displayMultipleRoleDispatch(theStage, user);
+	    }
 	}
+
 	
 		
 	/**********
