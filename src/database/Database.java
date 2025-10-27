@@ -1251,6 +1251,7 @@ public class Database {
 	    }
 	    return users;
 	}
+		
 		/*******
 	 * <p> Method: boolean deleteUser(String username) </p>
 	 * 
@@ -1343,6 +1344,22 @@ public class Database {
 	    }
 	    return false;
 	}
+	
+	public Connection getConnection() throws SQLException {
+	    return this.connection; // assuming 'connection' is the internal Connection object
+	}
 
+	// Add this method to your Database class
+	public void createPostTable() throws SQLException {
+	    String postTable = "CREATE TABLE IF NOT EXISTS posts ("
+	                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
+	                     + "author VARCHAR(255), "
+	                     + "content VARCHAR(1000), "
+	                     + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+	                     + "parentId INT DEFAULT NULL, "
+	                     + "FOREIGN KEY (author) REFERENCES userDB(userName), "
+	                     + "FOREIGN KEY (parentId) REFERENCES posts(id) ON DELETE CASCADE)";
+	    statement.execute(postTable);
+	}
 
 }
