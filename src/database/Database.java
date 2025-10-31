@@ -14,6 +14,8 @@ import java.time.LocalDateTime;
 import java.sql.Timestamp;
 
 import entityClasses.User;
+import entityClasses.Post;
+import entityClasses.Reply;
 
 
 /*******
@@ -94,6 +96,7 @@ public class Database {
 			//statement.execute("DROP ALL OBJECTS");
 
 			createTables();  // Create the necessary tables if they don't exist
+			createPostAndReplyTables(); // ensure posts/replies tables exist
 		} catch (ClassNotFoundException e) {
 			System.err.println("JDBC Driver not found: " + e.getMessage());
 		}
@@ -132,6 +135,223 @@ public class Database {
 	    statement.execute(invitationCodesTable);
 	}
 
+	// =====================================================================
+    //  NEW SECTION: Create Post & Reply Tables for Forum-like CRUD storage
+    // =====================================================================
+    public void createPostAndReplyTables() throws SQLException {
+        String postsTable = "CREATE TABLE IF NOT EXISTS posts ("
+                + "id INT AUTO_INCREMENT PRIMARY KEY, "
+                + "author VARCHAR(255), "
+                + "title VARCHAR(255), "
+                + "body VARCHAR(2000), "
+                + "tags VARCHAR(255), "
+                + "isPrivate BOOLEAN, "
+                + "isPinned BOOLEAN, "
+                + "createdAt TIMESTAMP, "
+                + "updatedAt TIMESTAMP, "
+                + "FOREIGN KEY (author) REFERENCES userDB(userName) ON DELETE CASCADE)";
+        statement.execute(postsTable);
+
+        String repliesTable = "CREATE TABLE IF NOT EXISTS replies ("
+                + "id INT AUTO_INCREMENT PRIMARY KEY, "
+                + "postId INT, "
+                + "author VARCHAR(255), "
+                + "body VARCHAR(2000), "
+                + "isAnswer BOOLEAN, "
+                + "createdAt TIMESTAMP, "
+                + "updatedAt TIMESTAMP, "
+                + "FOREIGN KEY (postId) REFERENCES posts(id) ON DELETE CASCADE, "
+                + "FOREIGN KEY (author) REFERENCES userDB(userName) ON DELETE CASCADE)";
+        statement.execute(repliesTable);
+    }
+
+    // =====================================================================
+    //  NEW SECTION: CRUD Methods for POSTS
+    // =====================================================================
+
+    /**
+     * Inserts a new Post into the posts table and stores the generated database ID
+     * inside the Post object.
+     *
+     * @param post the Post object to insert
+     */
+    public void insertPost(Post post) throws SQLException {
+        String sql = "INSERT INTO posts (author, title, body, tags, isPrivate, isPinned, createdAt, updatedAt) "
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, post.getAuthor());
+            ps.setString(2, post.getTitle());
+            ps.setString(3, post.getBody());
+            ps.setString(4, post.getTags());
+            ps.setBoolean(5, post.isPrivate());
+            ps.setBoolean(6, post.isPinned());
+            ps.setTimestamp(7, Timestamp.valueOf(post.getCreatedAt()));
+            ps.setTimestamp(8, Timestamp.valueOf(post.getUpdatedAt()));
+            ps.executeUpdate();
+
+            // ✅ Capture the generated database ID and set it in the Post object
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) {
+                    post.setDatabaseId(keys.getInt(1));
+                }
+            }
+        }
+    }
+
+    /**
+     * Retrieves all posts from the database.
+     * 
+     * @return list of all posts (latest first)
+     */
+    public List<Post> getAllPosts() throws SQLException {
+        List<Post> posts = new ArrayList<>();
+        String sql = "SELECT * FROM posts ORDER BY createdAt DESC";
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Post p = new Post(
+                    rs.getInt("id"),
+                    rs.getString("author"),
+                    rs.getString("title"),
+                    rs.getString("body"),
+                    rs.getString("tags"),
+                    rs.getBoolean("isPrivate"),
+                    rs.getBoolean("isPinned"),
+                    rs.getTimestamp("createdAt").toLocalDateTime(),
+                    rs.getTimestamp("updatedAt").toLocalDateTime()
+                );
+                posts.add(p);
+            }
+        }
+        return posts;
+    }
+
+    /**
+     * Updates the title and body of a post.
+     * 
+     * @param id post ID
+     * @param newTitle new title text
+     * @param newBody new body text
+     */
+    public void updatePost(int id, String newTitle, String newBody) throws SQLException {
+        String sql = "UPDATE posts SET title = ?, body = ?, updatedAt = ? WHERE id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, newTitle);
+            ps.setString(2, newBody);
+            ps.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
+            ps.setInt(4, id);
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * Deletes a post (and its replies via cascade) using its database ID.
+     *
+     * @param databaseId the database-assigned ID of the post
+     */
+    public void deletePost(int databaseId) throws SQLException {
+        String sql = "DELETE FROM posts WHERE id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, databaseId);
+            ps.executeUpdate();
+        }
+    }
+
+
+    // =====================================================================
+    //  NEW SECTION: CRUD Methods for REPLIES
+    // =====================================================================
+
+    /**
+     * Inserts a new Reply into the replies table.
+     * Ensures referential integrity by using the post's database ID.
+     *
+     * @param reply the Reply object to insert
+     */
+    public void insertReply(Reply reply) throws SQLException {
+        String sql = "INSERT INTO replies (postId, author, body, isAnswer, createdAt, updatedAt) "
+                   + "VALUES (?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, reply.getPostDatabaseId());
+            ps.setString(2, reply.getAuthor());
+            ps.setString(3, reply.getBody());
+            ps.setBoolean(4, reply.isAnswer());
+            ps.setTimestamp(5, Timestamp.valueOf(reply.getCreatedAt()));
+            ps.setTimestamp(6, Timestamp.valueOf(reply.getUpdatedAt()));
+            ps.executeUpdate();
+
+            // ✅ capture DB-generated ID
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) {
+                    reply.setDatabaseId(keys.getInt(1));
+                }
+            }
+        }
+    }
+
+
+
+    /**
+     * Retrieves all replies belonging to a specific post.
+     * 
+     * @param postId the post's ID
+     * @return list of Reply objects
+     */
+    public List<Reply> getRepliesForPost(int postDatabaseId) throws SQLException {
+        List<Reply> replies = new ArrayList<>();
+        String sql = "SELECT * FROM replies WHERE postId = ? ORDER BY createdAt ASC";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, postDatabaseId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Reply r = new Reply(
+                    rs.getInt("id"),
+                    rs.getInt("postId"),
+                    rs.getString("author"),
+                    rs.getString("body"),
+                    rs.getBoolean("isAnswer"),
+                    rs.getTimestamp("createdAt").toLocalDateTime(),
+                    rs.getTimestamp("updatedAt").toLocalDateTime()
+                );
+                replies.add(r);
+            }
+        }
+        return replies;
+    }
+
+
+    /**
+     * Updates the body of an existing reply.
+     * 
+     * @param id reply ID
+     * @param newBody new text
+     */
+    public void updateReply(int id, String newBody) throws SQLException {
+        String sql = "UPDATE replies SET body = ?, updatedAt = ? WHERE id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, newBody);
+            ps.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now()));
+            ps.setInt(3, id);
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * Deletes a reply by its ID.
+     * 
+     * @param id reply ID
+     */
+    public void deleteReply(int id) throws SQLException {
+        String sql = "DELETE FROM replies WHERE id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
+    }
+
+    // =====================================================================
+    //  END OF NEW SECTION (Existing methods below are unchanged)
+    // =====================================================================
 
 /*******
  * <p> Method: isDatabaseEmpty </p>
@@ -1251,6 +1471,7 @@ public class Database {
 	    }
 	    return users;
 	}
+		
 		/*******
 	 * <p> Method: boolean deleteUser(String username) </p>
 	 * 
@@ -1343,6 +1564,22 @@ public class Database {
 	    }
 	    return false;
 	}
+	
+	public Connection getConnection() throws SQLException {
+	    return this.connection; // assuming 'connection' is the internal Connection object
+	}
 
+	// Add this method to your Database class
+	public void createPostTable() throws SQLException {
+	    String postTable = "CREATE TABLE IF NOT EXISTS posts ("
+	                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
+	                     + "author VARCHAR(255), "
+	                     + "content VARCHAR(1000), "
+	                     + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+	                     + "parentId INT DEFAULT NULL, "
+	                     + "FOREIGN KEY (author) REFERENCES userDB(userName), "
+	                     + "FOREIGN KEY (parentId) REFERENCES posts(id) ON DELETE CASCADE)";
+	    statement.execute(postTable);
+	}
 
 }

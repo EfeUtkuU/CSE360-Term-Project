@@ -1,20 +1,16 @@
 package guiStaff;
 
-public class ModelStaffHome {
-
-/*******
- * <p> Title: ModelStaffHome Class. </p>
- * 
- * <p> Description: The StaffHome Page Model.  This class is not used as there is no
- * data manipulated by this MVC beyond accepting role information and saving it in the
- * database.</p>
- * 
- * <p> Copyright: Lynn Robert Carter © 2025 </p>
- * 
- * @author Lynn Robert Carter
- * 
- * @version 1.00		2025-08-15 Initial version
- *  
+/**
+ * <p><strong>Class:</strong> ModelStaffHome</p>
+ *
+ * <p><strong>Description:</strong>
+ * The Staff Home Page Model.  
+ * This page itself holds no persistent data beyond role identification.
+ * All data management occurs in the {@code guiStaffPosts} package.
+ * </p>
+ *
+ * @version 1.10 — 2025-10-26 Updated for Javadoc compliance
  */
-
+public class ModelStaffHome {
+    // No data or logic handled here for now.
 }

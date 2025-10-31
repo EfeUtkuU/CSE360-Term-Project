@@ -3,63 +3,78 @@ package entityClasses;
 /*******
  * <p> Title: User Class </p>
  * 
- * <p> Description: This User class represents a user entity in the system.  It contains the user's
- *  details such as userName, password, and roles being played. </p>
+ * <p> Description: 
+ * The {@code User} class represents a user entity in the system. It stores
+ * all key information about the user, including name, account credentials,
+ * email, and assigned roles (Admin, Student, Staff). 
  * 
- * <p> Copyright: Lynn Robert Carter © 2025 </p>
+ * This class serves as the core identity object used across the application
+ * by posts, replies, and database records. </p>
  * 
- * @author Lynn Robert Carter
+ * <p> Copyright:
+ * Lynn Robert Carter © 2025 </p>
  * 
- * 
- */ 
-
+ * * @author Efe Utku Ural
+ * @version 2.00 — 2025-10-26 — Updated for database compatibility and Javadoc compliance
+ */
 public class User {
 	
-	/*
-	 * These are the private attributes for this entity object
-	 */
-    private String userName;
-    private String password;
-    private String firstName;
-    private String middleName;
-    private String lastName;
-    private String preferredFirstName;
-    private String emailAddress;
-    private boolean adminRole;
-    private boolean Student;
-    private boolean Staff;
-    
-    
-    /*****
-     * <p> Method: User() </p>
-     * 
-     * <p> Description: This default constructor is not used in this system. </p>
-     */
-    public User() {
-    	
-    }
+	// ---------------------- Attributes ----------------------
 
-    
-    /*****
-     * <p> Method: User(String userName, String password, boolean r1, boolean r2,
-     * 		boolean r3, boolean r4, boolean r5) </p>
-     * 
-     * <p> Description: This constructor is used to establish user entity objects. </p>
-     * 
-     * @param userName specifies the account userName for this user
-     * 
-     * @param password specifies the account password for this user
-     * 
-     * @param r1 specifies the the Admin attribute (TRUE or FALSE) for this user
-     * 
-     * @param r2 specifies the the Student attribute (TRUE or FALSE) for this user
-     * 
-     * @param r3 specifies the the Reviewer attribute (TRUE or FALSE) for this user
-     * 
+    /** The unique username for this user’s account. */
+    private String userName;
+
+    /** The password associated with this user’s account. */
+    private String password;
+
+    /** The user’s legal first name. */
+    private String firstName;
+
+    /** The user’s middle name (optional). */
+    private String middleName;
+
+    /** The user’s legal last name. */
+    private String lastName;
+
+    /** The user’s preferred first name (nickname or display name). */
+    private String preferredFirstName;
+
+    /** The user’s primary email address. */
+    private String emailAddress;
+
+    /** Indicates whether this user has administrative privileges. */
+    private boolean adminRole;
+
+    /** Indicates whether this user is registered as a student. */
+    private boolean student;
+
+    /** Indicates whether this user is registered as a staff member. */
+    private boolean staff;
+
+
+    // ---------------------- Constructors ----------------------
+
+    /**
+     * Default constructor. Not commonly used in the system.
      */
-    // Constructor to initialize a new User object with userName, password, and role.
-    public User(String userName, String password, String fn, String mn, String ln, String pfn, 
-    		String ea, boolean r1, boolean r2, boolean r3) {
+    public User() {}
+
+    /**
+     * Constructs a new {@code User} with all details specified.
+     *
+     * @param userName  the username of the account
+     * @param password  the account password
+     * @param fn        the user’s first name
+     * @param mn        the user’s middle name
+     * @param ln        the user’s last name
+     * @param pfn       the preferred first name
+     * @param ea        the user’s email address
+     * @param r1        whether the user has the Admin role
+     * @param r2        whether the user has the Student role
+     * @param r3        whether the user has the Staff role
+     */
+    public User(String userName, String password, String fn, String mn, String ln, 
+                String pfn, String ea, boolean r1, boolean r2, boolean r3) {
         this.userName = userName;
         this.password = password;
         this.firstName = fn;
@@ -68,135 +83,104 @@ public class User {
         this.preferredFirstName = pfn;
         this.emailAddress = ea;
         this.adminRole = r1;
-        this.Student = r2;
-        this.Staff = r3;
+        this.student = r2;
+        this.staff = r3;
     }
 
-    
-    /*****
-     * <p> Method: void setAdminRole(boolean role) </p>
-     * 
-     * <p> Description: This setter defines the Admin role attribute. </p>
-     * 
-     * @param role is a boolean that specifies if this user in playing the Admin role.
-     * 
+    /**
+     * Constructs a minimal {@code User} object with only a username.
+     * Useful when reconstructing objects from database relations.
+     *
+     * @param userName the username for this user
      */
-    // Sets the role of the Admin user.
+    public User(String userName) {
+        this.userName = userName;
+    }
+
+
+    // ---------------------- Role Setters ----------------------
+
+    /**
+     * Assigns the Admin role to this user.
+     *
+     * @param role {@code true} if the user should have the Admin role
+     */
     public void setAdminRole(boolean role) {
-    	this.adminRole=role;
+        this.adminRole = role;
     }
 
-    
-    /*****
-     * <p> Method: void setStudentUser(boolean role) </p>
-     * 
-     * <p> Description: This setter defines the Student attribute. </p>
-     * 
-     * @param role is a boolean that specifies if this user in playing Student.
-     * 
+    /**
+     * Assigns or removes the Student role for this user.
+     *
+     * @param role {@code true} if the user is a student
      */
-    // Sets the Student user.
     public void setStudentUser(boolean role) {
-    	this.Student=role;
+        this.student = role;
     }
 
-    
-    /*****
-     * <p> Method: void setStaffUser(boolean role) </p>
-     * 
-     * <p> Description: This setter defines the Staff attribute. </p>
-     * 
-     * @param role is a boolean that specifies if this user in playing Staff.
-     * 
+    /**
+     * Assigns or removes the Staff role for this user.
+     *
+     * @param role {@code true} if the user is staff
      */
-    // Sets the Staff user.
     public void setStaffUser(boolean role) {
-    	this.Staff=role;
+        this.staff = role;
     }
 
-    
-    /*****
-     * <p> Method: String getUserName() </p>
-     * 
-     * <p> Description: This getter returns the UserName. </p>
-     * 
-     * @return a String of the UserName
-     * 
+
+    // ---------------------- Attribute Getters ----------------------
+
+    /**
+     * Returns this user’s username.
+     *
+     * @return the user’s username
      */
-    // Gets the current value of the UserName.
     public String getUserName() { return userName; }
 
-    
-    /*****
-     * <p> Method: String getPassword() </p>
-     * 
-     * <p> Description: This getter returns the Password. </p>
-     * 
-     * @return a String of the password
-	 *
+    /**
+     * Returns this user’s password.
+     *
+     * @return the account password
      */
-    // Gets the current value of the Password.
     public String getPassword() { return password; }
 
-    
-    /*****
-     * <p> Method: String getFirstName() </p>
-     * 
-     * <p> Description: This getter returns the FirstName. </p>
-     * 
-     * @return a String of the FirstName
-	 *
+    /**
+     * Returns the user’s first name.
+     *
+     * @return the first name
      */
-    // Gets the current value of the FirstName.
     public String getFirstName() { return firstName; }
 
-    
-    /*****
-     * <p> Method: String getMiddleName() </p>
-     * 
-     * <p> Description: This getter returns the MiddleName. </p>
-     * 
-     * @return a String of the MiddleName
-	 *
+    /**
+     * Returns the user’s middle name.
+     *
+     * @return the middle name
      */
-    // Gets the current value of the Student role attribute.
     public String getMiddleName() { return middleName; }
 
-    
-    /*****
-     * <p> Method: String getLasteName() </p>
-     * 
-     * <p> Description: This getter returns the LastName. </p>
-     * 
-     * @return a String of the LastName
-	 *
+    /**
+     * Returns the user’s last name.
+     *
+     * @return the last name
      */
-    // Gets the current value of the Student role attribute.
     public String getLastName() { return lastName; }
 
-    
-    /*****
-     * <p> Method: String getPreferredFirstName() </p>
-     * 
-     * <p> Description: This getter returns the PreferredFirstName. </p>
-     * 
-     * @return a String of the PreferredFirstName
-	 *
+    /**
+     * Returns the user’s preferred (display) first name.
+     *
+     * @return the preferred first name
      */
-    // Gets the current value of the Student role attribute.
     public String getPreferredFirstName() { return preferredFirstName; }
 
-    
-    /*****
-     * <p> Method: String getEmailAddress() </p>
-     * 
-     * <p> Description: This getter returns the EmailAddress. </p>
-     * 
-     * @return a String of the EmailAddress
-	 *
+    /**
+     * Returns the user’s email address.
+     *
+     * @return the email address
      */
-    // Gets the current value of the Student role attribute.
     public String getEmailAddress() { return emailAddress; }
+
+
+    // ---------------------- Attribute Setters ----------------------
 
     public void setUserName(String s) { userName = s; }
     public void setPassword(String s) { password = s; }
@@ -206,57 +190,54 @@ public class User {
     public void setPreferredFirstName(String s) { preferredFirstName = s; }
     public void setEmailAddress(String s) { emailAddress = s; }
 
-    
-    /*****
-     * <p> Method: String getAdminRole() </p>
-     * 
-     * <p> Description: This getter returns the value of the Admin role attribute. </p>
-     * 
-     * @return a String of "TRUE" or "FALSE" based on state of the attribute
-	 *
+
+    // ---------------------- Role Getters ----------------------
+
+    /**
+     * Returns whether this user is an administrator.
+     *
+     * @return {@code true} if Admin role is active; otherwise {@code false}
      */
-    // Gets the current value of the Admin role attribute.
     public boolean getAdminRole() { return adminRole; }
 
-    
-    /*****
-     * <p> Method: String getStudent() </p>
-     * 
-     * <p> Description: This getter returns the value of the Student attribute. </p>
-     * 
-     * @return a String of "TRUE" or "FALSE" based on state of the attribute
-	 *
+    /**
+     * Returns whether this user has the Student role.
+     *
+     * @return {@code true} if Student role is active; otherwise {@code false}
      */
-    // Gets the current value of the Student attribute.
-	public boolean getNewStudent() { return Student; }
+    public boolean getNewStudent() { return student; }
 
-    
-    /*****
-     * <p> Method: String getStaff() </p>
-     * 
-     * <p> Description: This getter returns the value of the Staff attribute. </p>
-     * 
-     * @return a String of "TRUE" or "FALSE" based on state of the attribute
-	 *
+    /**
+     * Returns whether this user has the Staff role.
+     *
+     * @return {@code true} if Staff role is active; otherwise {@code false}
      */
-    // Gets the current value of the Staff attribute.
-    public boolean getNewStaff() { return Staff; }
+    public boolean getNewStaff() { return staff; }
 
-        
-    /*****
-     * <p> Method: int getNumRoles() </p>
-     * 
-     * <p> Description: This getter returns the number of roles this user plays (0 - 5). </p>
-     * 
-     * @return a value 0 - 5 of the number of roles this user plays
-	 *
+
+    // ---------------------- Utility ----------------------
+
+    /**
+     * Returns the total number of roles assigned to this user.
+     * Used for quick role count checks.
+     *
+     * @return an integer from 0–3 indicating how many roles this user has
      */
-    // Gets the current value of the Staff role attribute.
     public int getNumRoles() {
-    	int numRoles = 0;
-    	if (adminRole) numRoles++;
-    	if (Student) numRoles++;
-    	if (Staff) numRoles++;
-    	return numRoles;
+        int numRoles = 0;
+        if (adminRole) numRoles++;
+        if (student) numRoles++;
+        if (staff) numRoles++;
+        return numRoles;
+    }
+
+    /**
+     * Returns a string representation of the user’s identity.
+     *
+     * @return formatted user summary
+     */
+    @Override
+    public String toString() {
+        return userName + " (" + preferredFirstName + " " + lastName + ")";
     }
 }

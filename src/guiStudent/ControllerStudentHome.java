@@ -1,40 +1,42 @@
 package guiStudent;
 
+import guiStudentPosts.ViewStudentPosts;
+import entityClasses.User;
+import javafx.stage.Stage;
+
+/**
+ * <p><strong>Class:</strong> ControllerStudentHome</p>
+ *
+ * <p><strong>Description:</strong>
+ * Controller for the Student Home page.  
+ * Provides actions for logout, quit, and opening the discussion (posts) thread.
+ * </p>
+ *
+ * @version 2.00 — 2025-10-26
+ */
 public class ControllerStudentHome {
 
-	/*-*******************************************************************************************
+    /**
+     * Logs out the current student and returns to the login page.
+     */
+    protected static void performLogout() {
+        guiUserLogin.ViewUserLogin.displayUserLogin(ViewStudentHome.theStage);
+    }
 
-	User Interface Actions for this page
-	
-	This controller is not a class that gets instantiated.  Rather, it is a collection of protected
-	static methods that can be called by the View (which is a singleton instantiated object) and 
-	the Model is often just a stub, or will be a singleton instantiated object.
-	
-	 */
+    /**
+     * Exits the application.
+     */
+    protected static void performQuit() {
+        System.exit(0);
+    }
 
-	
- 	/**********
-	 * <p> Method: performLogout() </p>
-	 * 
-	 * <p> Description: This method logs out the current user and proceeds to the normal login
-	 * page where existing users can log in or potential new users with a invitation code can
-	 * start the process of setting up an account. </p>
-	 * 
-	 */
-	protected static void performLogout() {
-		guiUserLogin.ViewUserLogin.displayUserLogin(ViewStudentHome.theStage);
-	}
-	
-	
-	/**********
-	 * <p> Method: performQuit() </p>
-	 * 
-	 * <p> Description: This method terminates the execution of the program.  It leaves the
-	 * database in a state where the normal login page will be displayed when the application is
-	 * restarted.</p>
-	 * 
-	 */	
-	protected static void performQuit() {
-		System.exit(0);
-	}
+    /**
+     * Opens the Student Discussion Thread (posts GUI).
+     *
+     * @param stage the active JavaFX Stage
+     * @param user  the logged-in student
+     */
+    protected static void performOpenDiscussion(Stage stage, User user) {
+        ViewStudentPosts.displayStudentPosts(stage, user);
+    }
 }

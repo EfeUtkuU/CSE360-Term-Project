@@ -1,7 +1,12 @@
+/**
+ * Main module definition for the CSE360 Foundations F25 application.
+ */
 module FoundationsF25 {
-	requires javafx.controls;
-	requires java.sql;
-	requires javafx.graphics;
-	
-	opens applicationMain to javafx.graphics, javafx.fxml;
+    requires javafx.controls;
+    requires javafx.fxml;
+    requires javafx.graphics;
+    requires java.sql;
+    
+
+    opens applicationMain to javafx.graphics, javafx.fxml;
 }
