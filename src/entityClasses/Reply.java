@@ -120,7 +120,9 @@ public class Reply {
         this.body = body;
         this.updatedAt = LocalDateTime.now();
     }
-
+    public String getContent() {
+    	return body;
+    }
     public void setAnswer(boolean isAnswer) {
         this.isAnswer = isAnswer;
         this.updatedAt = LocalDateTime.now();

@@ -4,6 +4,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import entityClasses.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * <p><strong>Class:</strong> ControllerStaffPosts</p>
@@ -13,7 +14,7 @@ import java.util.List;
  * and replies. Staff users can edit or delete any post or reply regardless of author.
  * Uses DB-managed IDs for persistence.</p>
  *
- * @version 2.10 — 2025-10-27 — Updated for DB-managed IDs + staff privileges
+ * @version 2.20 — 2025-11-10 — Added “Search by User” filtering
  */
 public final class ControllerStaffPosts {
 
@@ -28,7 +29,21 @@ public final class ControllerStaffPosts {
     public static List<Post> getPostsForView() {
         if (currentQuery == null || currentQuery.isBlank())
             return PostStore.getInstance().getAllPosts();
-        return PostStore.getInstance().searchPosts(currentQuery);
+
+        String q = currentQuery.trim();
+
+        // NEW: Handle "Search by username only" queries
+        if (q.toLowerCase().startsWith("user:")) {
+            String username = q.substring(5).trim().toLowerCase();
+            return PostStore.getInstance().getAllPosts()
+                    .stream()
+                    .filter(p -> p.getAuthor() != null
+                            && p.getAuthor().toLowerCase().contains(username))
+                    .collect(Collectors.toList());
+        }
+
+        // Default: keyword search (title/body/etc.)
+        return PostStore.getInstance().searchPosts(q);
     }
 
     /** Adds a new post to the database. */
