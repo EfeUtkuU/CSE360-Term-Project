@@ -1,5 +1,12 @@
 package entityClasses;
 
+
+import applicationMain.FoundationsMain;
+import database.Database;
+
+import java.util.ArrayList;
+import java.util.List;
+
 /*******
  * <p> Title: User Class </p>
  * 
@@ -230,6 +237,44 @@ public class User {
         if (staff) numRoles++;
         return numRoles;
     }
+    
+    /**
+     * Returns a list of students from the database to user.
+     * Used for choosing students.
+     *
+     * @return a list of students
+     */
+    public static List<User> loadStudentUsers() {
+        List<User> result = new ArrayList<>();
+
+        try {
+            Database db = FoundationsMain.database;
+            db.connectToDatabase();
+
+            List<String[]> rows = db.getAllStudents();
+
+            for (String[] r : rows) {
+                User u = new User(
+                        r[0], "",           
+                        r[1], "",           
+                        r[2],               
+                        r[1],               
+                        r[3],               
+                        r[4].equals("Admin"),
+                        r[5].equals("Student"),
+                        r[6].equals("Staff")
+                );
+                result.add(u);
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error loading students: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    
 
     /**
      * Returns a string representation of the user’s identity.

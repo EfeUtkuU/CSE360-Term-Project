@@ -7,146 +7,162 @@ import java.util.List;
  * <p><strong>Class:</strong> ModelStudentPosts</p>
  *
  * <p><strong>Description:</strong>
- * The model layer for the Student Posts page. This class wraps {@link PostStore}
- * and {@link ReplyStore} to perform create, read, update, and delete (CRUD) operations
- * while enforcing student-level permissions.
+ * Handles student-level CRUD for posts & replies *within threads*.
+ * Students may:
+ *   • Create new threads
+ *   • Create posts inside existing threads
+ *   • Edit/delete only their own content
  * </p>
- *
- * <p><strong>Key Rules:</strong></p>
- * <ul>
- *   <li>Students may edit or delete only their own posts and replies.</li>
- *   <li>Timestamps are automatically handled by {@link Post} and {@link Reply} setters.</li>
- * </ul>
- *
- * @version 2.10 — 2025-10-27 — Updated for DB-managed post/reply IDs
  */
 public final class ModelStudentPosts {
 
-    /**
-     * Private constructor to prevent instantiation of this utility class.
-     */
-    private ModelStudentPosts() { }
+    private ModelStudentPosts() {}
 
-    // ---------------------- Posts ----------------------
+    // --------------------------------------------------------------------
+    //  THREAD CREATION BY STUDENT
+    // --------------------------------------------------------------------
 
     /**
-     * Adds a new post on behalf of a student.
-     * Automatically sanitizes title and body fields.
+     * Creates a new thread and inserts the root post.
      *
-     * @param user the current user creating the post
-     * @param title the title of the post; if blank, defaults to "Student Post"
-     * @param content the body content of the post
+     * Students supply:
+     *   • threadTitle  (shown in thread list)
+     *   • postTitle    (root post title)
+     *   • content      (root post body)
+     *
+     * @return the newly created thread, or null if content is blank
+     */
+    public static entityClasses.Thread createNewThread(
+            User user,
+            String threadTitle,
+            String postTitle,
+            String content
+    ) {
+        if (content == null || content.isBlank()) return null;
+
+        String safeThreadTitle = (threadTitle == null || threadTitle.isBlank())
+                ? "New Thread"
+                : threadTitle.trim();
+
+        String safePostTitle = (postTitle == null || postTitle.isBlank())
+                ? "Root Post"
+                : postTitle.trim();
+
+        // Create thread in DB
+        entityClasses.Thread thread = ThreadStore.getInstance()
+                .createThread(safeThreadTitle, user.getUserName());
+
+        if (thread == null) return null;
+
+        // Add the root post inside the new thread
+        PostStore.getInstance()
+                .addPostToThread(thread.getId(), user, safePostTitle, content.trim());
+
+        return thread;
+    }
+
+    /**
+     * ⚠️ Backwards compatible helper used by old controllers:
+     * Treats a "post" as a new thread + root post.
+     *
+     * Old GUI calls:
+     *   ModelStudentPosts.addPost(user, title, body)
+     *
+     * New behavior:
+     *   • Creates a new thread whose title = title (or "Student Post" if blank)
+     *   • Root post title = same as thread title
+     *   • Root post body = content
      */
     public static void addPost(User user, String title, String content) {
         if (content == null || content.isBlank()) return;
-        String safeTitle = (title == null || title.isBlank()) ? "Student Post" : title.trim();
-        Post newPost = new Post(user, safeTitle, content.trim(), "", false, false);
-        PostStore.getInstance().addPost(newPost);
+
+        String safeTitle = (title == null || title.isBlank())
+                ? "Student Post"
+                : title.trim();
+
+        createNewThread(user, safeTitle, safeTitle, content.trim());
+    }
+
+    // --------------------------------------------------------------------
+    //  POSTS
+    // --------------------------------------------------------------------
+
+    /**
+     * Adds a new post inside an existing thread.
+     * (You can use this later if you support multi-post threads.)
+     */
+    public static void addPostToThread(
+            User user,
+            entityClasses.Thread thread,
+            String title,
+            String content
+    ) {
+        if (thread == null || content == null || content.isBlank()) return;
+
+        String safeTitle = (title == null || title.isBlank())
+                ? "Student Post"
+                : title.trim();
+
+        PostStore.getInstance()
+                .addPostToThread(thread.getId(), user, safeTitle, content.trim());
     }
 
     /**
-     * Edits an existing post if the current user is the author.
-     *
-     * @param user the user requesting the edit
-     * @param postId the ID of the post to edit
-     * @param newTitle the new title; if blank, retains the old one
-     * @param newBody the new body content; if {@code null}, retains the old one
+     * Student edits their own post only.
      */
-    public static void editPost(User user, int postId, String newTitle, String newBody) {
-        PostStore store = PostStore.getInstance();
-        for (Post p : store.getAllPosts()) {
-            if (p.getId() == postId) {
-                if (p.getAuthor().equals(user.getUserName())) {
-                    String t = (newTitle == null || newTitle.isBlank()) ? p.getTitle() : newTitle.trim();
-                    String b = (newBody == null) ? p.getBody() : newBody.trim();
-                    store.updatePost(postId, user, t, b);
-                }
-                return;
-            }
-        }
+    public static void editPost(User user, Post post, String newTitle, String newBody) {
+        if (post == null) return;
+        if (!post.getAuthor().equals(user.getUserName())) return;
+
+        String t = (newTitle == null || newTitle.isBlank()) ? post.getTitle() : newTitle.trim();
+        String b = (newBody == null || newBody.isBlank()) ? post.getBody() : newBody.trim();
+
+        PostStore.getInstance().updatePost(post.getDatabaseId(), user, t, b);
     }
 
     /**
-     * Deletes a post if the current user is the author.
-     *
-     * @param user the user requesting deletion
-     * @param postId the ID of the post to delete
+     * Student deletes only their own post.
      */
-    public static void deletePost(User user, int postId) {
-        PostStore store = PostStore.getInstance();
-        for (Post p : store.getAllPosts()) {
-            if (p.getId() == postId && p.getAuthor().equals(user.getUserName())) {
-                store.deletePost(postId, user);
-                return;
-            }
-        }
+    public static void deletePost(User user, Post post) {
+        if (post == null) return;
+        if (!post.getAuthor().equals(user.getUserName())) return;
+
+        PostStore.getInstance().deletePost(post.getDatabaseId(), user);
     }
 
+
     /**
-     * Retrieves all posts currently available.
-     *
-     * @return a list of all {@link Post} objects
+     * Get all posts for a thread.
      */
-    public static List<Post> getAllPosts() {
-        return PostStore.getInstance().getAllPosts();
+    public static List<Post> getPostsForThread(entityClasses.Thread thread) {
+        if (thread == null) return List.of();
+        return PostStore.getInstance().getPostsForThread(thread.getId());
     }
 
-    /**
-     * Searches posts by a given keyword.
-     *
-     * @param keyword the search keyword; if blank, returns all posts
-     * @return a list of {@link Post} objects matching the search
-     */
-    public static List<Post> searchPosts(String keyword) {
-        if (keyword == null || keyword.isBlank()) return getAllPosts();
-        return PostStore.getInstance().searchPosts(keyword.trim());
-    }
+    // --------------------------------------------------------------------
+    // REPLIES
+    // --------------------------------------------------------------------
 
-    // ---------------------- Replies ----------------------
-
-    /**
-     * Adds a new reply for a given post.
-     * Uses the post’s database ID to maintain referential integrity.
-     *
-     * @param user the current user creating the reply
-     * @param post the parent post to which the reply belongs
-     * @param text the reply content text
-     */
     public static void addReply(User user, Post post, String text) {
         if (post == null || text == null || text.isBlank()) return;
-        Reply reply = new Reply(post, user, text.trim(), false);
-        ReplyStore.getInstance().addReply(reply);
+        ReplyStore.getInstance().addReply(new Reply(post, user, text.trim(), false));
     }
 
-    /**
-     * Edits an existing reply if the user is the author.
-     *
-     * @param user the user requesting the edit
-     * @param replyId the ID of the reply to edit
-     * @param newBody the updated body text
-     */
-    public static void editReply(User user, int replyId, String newBody) {
+    public static void editReply(User user, Reply reply, String newBody) {
+        if (reply == null) return;
+        if (!reply.getAuthor().equals(user.getUserName())) return;
         if (newBody == null || newBody.isBlank()) return;
-        ReplyStore.getInstance().updateReply(replyId, user, newBody.trim());
+
+        ReplyStore.getInstance().updateReply(reply.getId(), user, newBody.trim());
     }
 
-    /**
-     * Deletes a reply if the user is the author.
-     *
-     * @param user the user requesting deletion
-     * @param replyId the ID of the reply to delete
-     */
-    public static void deleteReply(User user, int replyId) {
-        ReplyStore.getInstance().deleteReply(replyId, user);
+    public static void deleteReply(User user, Reply reply) {
+        if (reply == null) return;
+        if (!reply.getAuthor().equals(user.getUserName())) return;
+
+        ReplyStore.getInstance().deleteReply(reply.getId(), user);
     }
 
-    /**
-     * Loads all replies for a given post directly from the database.
-     *
-     * @param post the parent post whose replies should be loaded
-     * @return a list of {@link Reply} objects belonging to the post,
-     *         or an empty list if {@code post} is {@code null}
-     */
     public static List<Reply> getRepliesForPost(Post post) {
         if (post == null) return List.of();
         return ReplyStore.getInstance().loadRepliesForPost(post.getDatabaseId());

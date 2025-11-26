@@ -4,133 +4,224 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import entityClasses.*;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
- * <p><strong>Class:</strong> ControllerStaffPosts</p>
+ * <h2>Class: ControllerStaffPosts</h2>
  *
- * <p><strong>Description:</strong>
- * Controller for the Staff Posts page. Handles CRUD operations and search for posts
- * and replies. Staff users can edit or delete any post or reply regardless of author.
- * Uses DB-managed IDs for persistence.</p>
+ * <p><strong>Description:</strong><br>
+ * Controller for the Staff Posts page.
+ * This controller handles all staff-side actions involving:
+ * </p>
  *
- * @version 2.20 — 2025-11-10 — Added “Search by User” filtering
+ * <ul>
+ *   <li>creating and editing posts</li>
+ *   <li>deleting posts</li>
+ *   <li>creating, editing, and deleting replies</li>
+ *   <li>search filtering</li>
+ *   <li>navigating back to the staff home view</li>
+ * </ul>
+ *
+ * <p>
+ * It follows the same static, non-instantiated MVC pattern used throughout
+ * the GUI system, meaning all controller responsibilities are implemented as
+ * static methods.
+ * </p>
+ *
+ * @version 2.10 — 2025-11-25 — Fully Javadoc-compatible version
  */
 public final class ControllerStaffPosts {
 
-    /** Current active search query; null means no filtering. */
+    /** Current active search query; {@code null} means search is cleared. */
     private static String currentQuery = null;
 
+    /** Private constructor; this class is not instantiated. */
     private ControllerStaffPosts() {}
 
-    // -------------------- POSTS --------------------
+    // -------------------------------------------------------------------------
+    // POSTS
+    // -------------------------------------------------------------------------
 
-    /** Returns all posts or the filtered list if a search is active. */
+    /**
+     * Returns the list of posts to display.
+     * <p>
+     * If a search query is active, the returned list is filtered. Otherwise,
+     * the entire post list from {@link PostStore} is returned.
+     * </p>
+     *
+     * @return a list of {@link Post} objects for the current view
+     */
     public static List<Post> getPostsForView() {
         if (currentQuery == null || currentQuery.isBlank())
             return PostStore.getInstance().getAllPosts();
 
-        String q = currentQuery.trim();
-
-        // NEW: Handle "Search by username only" queries
-        if (q.toLowerCase().startsWith("user:")) {
-            String username = q.substring(5).trim().toLowerCase();
-            return PostStore.getInstance().getAllPosts()
-                    .stream()
-                    .filter(p -> p.getAuthor() != null
-                            && p.getAuthor().toLowerCase().contains(username))
-                    .collect(Collectors.toList());
-        }
-
-        // Default: keyword search (title/body/etc.)
-        return PostStore.getInstance().searchPosts(q);
+        return PostStore.getInstance().searchPosts(currentQuery);
     }
 
-    /** Adds a new post to the database. */
-    public static void performPost(TextField titleField, TextArea bodyArea, User user) {
+    /**
+     * Creates a new post inside an existing thread.
+     *
+     * @param thread     the thread in which to create the post
+     * @param titleField text field supplying the post title
+     * @param bodyArea   text area supplying the post content
+     * @param user       the staff user performing the action
+     */
+    public static void performPost(
+            entityClasses.Thread thread,
+            TextField titleField,
+            TextArea bodyArea,
+            User user) {
+
+        if (thread == null) return;
+
         String title = titleField.getText() == null ? "" : titleField.getText().trim();
         String body  = bodyArea.getText() == null ? "" : bodyArea.getText().trim();
+
         if (title.isBlank() || body.isBlank()) return;
 
-        ModelStaffPosts.addPost(user, title, body);
+        ModelStaffPosts.addPostToThread(user, thread, title, body);
+
         titleField.clear();
         bodyArea.clear();
-        ViewStaffPosts.refreshPosts();
+
+        ViewStaffPosts.refreshPostsForThread(thread);
     }
 
-    /** Updates the contents of a post. Staff can edit any post. */
+    /**
+     * Edits the body of an existing post.
+     * Staff can edit any post regardless of authorship.
+     *
+     * @param user    the staff user performing the edit
+     * @param post    the post to edit
+     * @param newBody updated body text
+     */
     public static void performPostEdit(User user, Post post, String newBody) {
         if (post == null || newBody == null || newBody.isBlank()) return;
+
         PostStore.getInstance().updatePost(post.getId(), user, post.getTitle(), newBody);
         PostStore.getInstance().reloadFromDatabase();
+
         ViewStaffPosts.refreshPosts();
     }
 
-    /** Deletes a post by its database ID (staff override). */
+    /**
+     * Deletes an existing post.
+     * Staff can delete any post regardless of authorship.
+     *
+     * @param user the staff user performing the deletion
+     * @param post the post to delete
+     */
     public static void performDeletePost(User user, Post post) {
         if (post == null) return;
+
         PostStore.getInstance().deletePost(post.getId(), user);
         ViewStaffPosts.refreshPosts();
     }
 
-    // -------------------- REPLIES --------------------
+    // -------------------------------------------------------------------------
+    // REPLIES
+    // -------------------------------------------------------------------------
 
-    /** Adds a reply to a specific post. */
+    /**
+     * Creates a reply to an existing post.
+     * Staff override allows replying to any post.
+     *
+     * @param user      the staff user performing the reply
+     * @param post      the post being replied to
+     * @param replyArea text area containing the reply body
+     */
     public static void performReply(User user, Post post, TextArea replyArea) {
+        if (post == null) return;
+
         String text = replyArea.getText() == null ? "" : replyArea.getText().trim();
-        if (text.isBlank() || post == null) return;
+        if (text.isBlank()) return;
 
         ModelStaffPosts.addReply(user, post, text);
         replyArea.clear();
+
         ViewStaffPosts.refreshPosts();
     }
 
-    /** Updates an existing reply’s body (staff override). */
+    /**
+     * Edits a reply.
+     *
+     * @param replyId the local in-memory ID of the reply to update
+     * @param user    the staff user performing the edit
+     * @param newBody updated reply content
+     */
     public static void performReplyEdit(int replyId, User user, String newBody) {
         if (newBody == null || newBody.isBlank()) return;
+
         ReplyStore.getInstance().updateReply(replyId, user, newBody);
         ViewStaffPosts.refreshPosts();
     }
 
-    /** Deletes any reply (staff override). */
+    /**
+     * Deletes a reply.
+     *
+     * @param replyId the local in-memory ID of the reply to remove
+     * @param user    the staff user performing the deletion
+     */
     public static void performReplyDelete(int replyId, User user) {
         ReplyStore.getInstance().deleteReply(replyId, user);
         ViewStaffPosts.refreshPosts();
     }
 
-    /** Returns all replies for a given post (by DB ID). */
+    /**
+     * Retrieves all replies for a given post.
+     *
+     * @param post the post whose replies are requested
+     * @return list of replies or an empty list if post is null
+     */
     public static List<Reply> getRepliesForPost(Post post) {
         if (post == null) return List.of();
         return ReplyStore.getInstance().loadRepliesForPost(post.getDatabaseId());
     }
 
-    // -------------------- SEARCH --------------------
+    // -------------------------------------------------------------------------
+    // SEARCH
+    // -------------------------------------------------------------------------
 
-    /** Applies a search query and refreshes the posts view. */
+    /**
+     * Performs a search across posts.
+     *
+     * @param query the search text; blank or null clears the search
+     */
     public static void performSearch(String query) {
         currentQuery = (query == null || query.isBlank()) ? null : query.trim();
         ViewStaffPosts.refreshPosts();
     }
 
-    /** Clears the current search query and refreshes the posts view. */
+    /**
+     * Clears any active search filter and refreshes the posts list.
+     */
     public static void performClearSearch() {
         currentQuery = null;
         ViewStaffPosts.refreshPosts();
     }
 
-    // -------------------- NAVIGATION --------------------
+    // -------------------------------------------------------------------------
+    // NAVIGATION
+    // -------------------------------------------------------------------------
 
-    /** Returns to staff home. */
+    /**
+     * Returns to the Staff Home page.
+     *
+     * @param user the staff user navigating back
+     */
     public static void performBack(User user) {
         guiStaff.ViewStaffHome.displayStaffHome(ViewStaffPosts.theStage, user);
     }
 
-    /** Logs out the current user. */
+    /**
+     * Logs the user out and returns to the login screen.
+     */
     public static void performLogout() {
         guiUserLogin.ViewUserLogin.displayUserLogin(ViewStaffPosts.theStage);
     }
 
-    /** Quits the application. */
+    /**
+     * Terminates the application immediately.
+     */
     public static void performQuit() {
         System.exit(0);
     }

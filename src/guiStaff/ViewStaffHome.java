@@ -10,6 +10,9 @@ import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import database.Database;
 import entityClasses.User;
+import guiStaffGrading.ControllerStaffGrading;
+import guiStaffStats.ViewStaffStatistics;
+
 
 /**
  * <p><strong>Class:</strong> ViewStaffHome</p>
@@ -35,6 +38,15 @@ public class ViewStaffHome {
 
     // GUI Area 2 — Discussion Thread Access
     protected static Button button_OpenDiscussion= new Button("Open Discussion Thread");
+    
+    // Student Statistics Page Access
+    protected static Button button_ViewStudentStatistics = new Button("View Student Statistics");
+    
+    // Student Grading Page Access
+    protected static Button button_OpenGrading = new Button("Grade Students");
+
+
+
 
     // GUI Area 3
     protected static Line   line_Separator4      = new Line(20, 525, width-20, 525);
@@ -89,6 +101,18 @@ public class ViewStaffHome {
         // Area 2 — Discussion Thread Access
         setupButtonUI(button_OpenDiscussion, "Dialog", 18, 250, Pos.CENTER, 500, 150);
         button_OpenDiscussion.setOnAction(e -> ControllerStaffHome.performOpenDiscussion(theStage, theUser));
+        
+        setupButtonUI(button_ViewStudentStatistics, "Dialog", 18, 250, Pos.CENTER, 500, 220);
+        button_ViewStudentStatistics.setOnAction(e -> 
+                ViewStaffStatistics.display(theStage, theUser)
+        );
+        
+        setupButtonUI(button_OpenGrading, "Dialog", 18, 250, Pos.CENTER, 500, 290);
+        button_OpenGrading.setOnAction(e ->
+                ControllerStaffGrading.displayGradingPage(theStage, theUser)
+        );
+
+
 
         // Area 3
         setupButtonUI(button_Logout, "Dialog", 18, 250, Pos.CENTER, 20, 540);
@@ -99,7 +123,10 @@ public class ViewStaffHome {
 
         theRootPane.getChildren().addAll(
                 label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
-                button_OpenDiscussion, line_Separator4, button_Logout, button_Quit);
+                button_OpenDiscussion, button_ViewStudentStatistics, button_OpenGrading,
+                line_Separator4, button_Logout, button_Quit);
+
+
     }
 
     // Helper methods
