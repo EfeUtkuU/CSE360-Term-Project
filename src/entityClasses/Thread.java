@@ -3,25 +3,58 @@ package entityClasses;
 import java.time.LocalDateTime;
 
 /**
- * <p><strong>Class:</strong> Thread</p>
+ * <h2>Class: Thread</h2>
  *
- * <p><strong>Description:</strong>
- * Represents a forum thread. This is the top-level container
- * holding multiple posts (the first of which is the “root post”).
- * Each thread has a title, creator, and timestamps.
+ * <p><strong>Description:</strong><br>
+ * Represents a discussion thread within the forum system. A thread serves as
+ * the top-level container for related posts, beginning with a root post and
+ * optionally containing many additional replies.
  * </p>
  *
- * @version 1.00 — 2025-11-22 — Initial forum implementation
+ * <p>
+ * Each thread includes:
+ * </p>
+ * <ul>
+ *   <li>a unique database identifier</li>
+ *   <li>a title describing the topic</li>
+ *   <li>the username of the creator</li>
+ *   <li>creation and last-updated timestamps</li>
+ * </ul>
+ *
+ * <p>
+ * <strong>Note:</strong> This class is named {@code Thread} but is unrelated to
+ * {@link java.lang.Thread}. It represents forum threads only.
+ * </p>
+ *
+ * @version
+ *   1.00 — 2025-11-22 — Initial forum implementation
  */
 public class Thread {
 
-    private final int id;                  // database ID
-    private String title;                  // thread title
-    private String author;                 // username creating thread
-    private LocalDateTime createdAt;       // timestamp
-    private LocalDateTime updatedAt;       // timestamp
+    /** Unique database identifier for this thread. */
+    private final int id;
 
-    /** Constructor used when loading from database */
+    /** Title of the discussion thread. */
+    private String title;
+
+    /** Username of the user who created the thread. */
+    private String author;
+
+    /** Timestamp of when this thread was created. */
+    private LocalDateTime createdAt;
+
+    /** Timestamp of the last update made to this thread. */
+    private LocalDateTime updatedAt;
+
+    /**
+     * Constructs a thread instance representing a record loaded from the database.
+     *
+     * @param id         unique thread identifier from the database
+     * @param title      title of the thread
+     * @param author     username of the thread creator
+     * @param createdAt  timestamp when the thread was created
+     * @param updatedAt  timestamp of the most recent update
+     */
     public Thread(int id, String title, String author,
                   LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
@@ -31,9 +64,18 @@ public class Thread {
         this.updatedAt = updatedAt;
     }
 
-    /** Constructor used before DB insert (ID assigned by DB) */
+    /**
+     * Constructs a new thread before it is inserted into the database.
+     * <p>
+     * The ID is set to {@code -1} temporarily; the database layer will assign a
+     * real ID after insertion.
+     * </p>
+     *
+     * @param title  title of the new thread
+     * @param author username of the creator
+     */
     public Thread(String title, String author) {
-        this.id = -1;  // temporary, DB assigns real value
+        this.id = -1;  // temporary; overwritten by DB
         this.title = title;
         this.author = author;
         this.createdAt = LocalDateTime.now();
@@ -42,31 +84,78 @@ public class Thread {
 
     // ------------------- Getters -------------------
 
-    public int getId() { return id; }
+    /**
+     * @return the database identifier of this thread
+     */
+    public int getId() {
+        return id;
+    }
 
-    public String getTitle() { return title; }
+    /**
+     * @return the title of this thread
+     */
+    public String getTitle() {
+        return title;
+    }
 
-    public String getAuthor() { return author; }
+    /**
+     * @return the username of the user who created the thread
+     */
+    public String getAuthor() {
+        return author;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    /**
+     * @return timestamp of when the thread was created
+     */
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    /**
+     * @return timestamp of the most recent modification to this thread
+     */
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
 
     // ------------------- Setters -------------------
 
-    public void setTitle(String title) { this.title = title; }
+    /**
+     * Sets the title of this thread.
+     *
+     * @param title new thread title
+     */
+    public void setTitle(String title) {
+        this.title = title;
+    }
 
+    /**
+     * Sets the time when this thread was last updated.
+     *
+     * @param updatedAt new update timestamp
+     */
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
 
     // ------------------- Display Helpers -------------------
 
-    /** Shown in left-side UI thread list */
+    /**
+     * Returns a short combined label for UI lists, typically displayed in the
+     * left-side navigation panel of the forum interface.
+     *
+     * @return a formatted string including thread title and author
+     */
     public String getDisplayLabel() {
         return title + "  (" + author + ")";
     }
 
+    /**
+     * Returns a string representation useful for debugging or logging.
+     *
+     * @return formatted representation of this thread
+     */
     @Override
     public String toString() {
         return "Thread{id=" + id +

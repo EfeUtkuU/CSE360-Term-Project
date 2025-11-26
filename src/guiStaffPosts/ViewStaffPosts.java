@@ -29,94 +29,181 @@ import java.util.List;
  * <p><strong>Class:</strong> ViewStaffPosts</p>
  *
  * <p><strong>Description:</strong>
- * Staff version of the discussion posts page with forum threads.
- * Left side shows a list of threads; right side shows posts and replies
- * for the selected thread. Staff can edit/delete any post or reply.
- * New posts are always attached to a selected thread; no posts exist
- * outside threads. A popup is used to create a new thread along with
- * its first post (thread title + post title + post body).
+ * JavaFX View responsible for displaying staff tools for:
+ * <ul>
+ *     <li>Viewing all threads</li>
+ *     <li>Selecting a thread and seeing its posts</li>
+ *     <li>Editing/deleting posts and replies (staff privileges)</li>
+ *     <li>Posting new content to a selected thread</li>
+ *     <li>Searching for posts within a selected thread</li>
+ *     <li>Displaying rules, creating threads, and managing UI layout</li>
+ * </ul>
+ *
+ * This class handles UI rendering only; all logic is delegated to
+ * {@link ControllerStaffPosts}, {@link ThreadStore}, {@link PostStore}, and {@link ReplyStore}.
  * </p>
  *
- * @version 4.00 — 2025-11-22 — Thread-aware UI with two-column layout
+ * @version 4.00 — 2025-11-22
  */
 public class ViewStaffPosts {
 
-    // ---------- Shared State ----------
+    // ==========================================================
+    // SHARED STATE (set from outside)
+    // ==========================================================
 
+    /** JavaFX stage reference used for navigation. */
     protected static Stage theStage;
-    protected static User  theUser;
 
-    private static final double width  = applicationMain.FoundationsMain.WINDOW_WIDTH;
+    /** Currently logged-in staff user. */
+    protected static User theUser;
+
+    /** Window width from FoundationsMain. */
+    private static final double width = applicationMain.FoundationsMain.WINDOW_WIDTH;
+
+    /** Window height from FoundationsMain (suppressed unused warning). */
     @SuppressWarnings("unused")
     private static final double height = applicationMain.FoundationsMain.WINDOW_HEIGHT;
 
-    // Header
+    // ==========================================================
+    // HEADER COMPONENTS
+    // ==========================================================
+
     private static final Label label_PageTitle   = new Label("Staff Posts");
     private static final Label label_UserDetails = new Label();
     private static final Line  line_Separator1   = new Line(20, 95, width - 20, 95);
+
+    /** Button that opens the forum rules popup. */
     protected static Button button_Rules = new Button("RULES");
 
-    // Thread column (left)
-    private static final Label    label_Threads = new Label("Threads");
-    private static final Button   button_NewThread = new Button("New Thread");
-    private static       ListView<entityClasses.Thread> list_Threads;
+    // ==========================================================
+    // LEFT COLUMN — THREAD LIST
+    // ==========================================================
 
-    // Posts/search (right)
+    private static final Label label_Threads = new Label("Threads");
+
+    /** Opens a dialog to create a new thread with a first post. */
+    private static final Button button_NewThread = new Button("New Thread");
+
+    /** ListView of all threads. */
+    private static ListView<entityClasses.Thread> list_Threads;
+
+    // ==========================================================
+    // RIGHT SIDE — POSTS, SEARCH, COMPOSER
+    // ==========================================================
+
     private static final TextField field_Search       = new TextField();
     private static final Button    button_Search      = new Button("Search");
     private static final Button    button_ClearSearch = new Button("Clear");
-    private static final Label     label_CurrentThread = new Label("No thread selected");
 
-    private static VBox       postContainer;
-    private static TextField  field_Title;
-    private static TextArea   area_Body;
+    /** Label showing “Thread: <title>” or placeholder. */
+    private static final Label label_CurrentThread = new Label("No thread selected");
+
+    /** Container for all post “cards” rendered in VBox form. */
+    private static VBox postContainer;
+
+    /** Post title (top of composer). */
+    private static TextField field_Title;
+
+    /** Post body (composer). */
+    private static TextArea area_Body;
+
+    /** Sends a new post to the selected thread. */
     private static final Button button_Post = new Button("Post");
 
-    // Footer
+    // ==========================================================
+    // FOOTER BUTTONS
+    // ==========================================================
+
     private static final Button button_Back   = new Button("Back");
     private static final Button button_Logout = new Button("Logout");
     private static final Button button_Quit   = new Button("Quit");
 
-    // Scene and root
+    // ==========================================================
+    // SCENE + ROOT
+    // ==========================================================
+
+    /** Singleton-like instance of this view. */
     private static ViewStaffPosts theView;
-    private static Scene          theScene;
-    private static Pane           theRoot;
 
-    // Formatting + state
-    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    /** JavaFX scene. */
+    private static Scene theScene;
 
-    /** Currently selected thread in the UI (may be null). */
+    /** JavaFX root pane. */
+    private static Pane theRoot;
+
+    // ==========================================================
+    // FORMATTING + STATE
+    // ==========================================================
+
+    /** Date/time format used for posts and replies. */
+    private static final DateTimeFormatter TIME_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    /** Currently selected thread in the UI. */
     private static entityClasses.Thread selectedThread = null;
 
-    /** Current search query (posts are filtered within the selected thread). */
+    /** Current search query filtering posts. */
     private static String currentSearch = null;
 
-    // Layout constants
+    /** Fixed width of thread column. */
     private static final double THREAD_COLUMN_WIDTH = 260.0;
 
-    // ---------- Public entry point ----------
+    // ==========================================================
+    // PUBLIC ENTRY POINT
+    // ==========================================================
 
+    /**
+     * Displays the Staff Posts page by:
+     * <ul>
+     *     <li>Initializing the view on first load</li>
+     *     <li>Loading all threads from the database</li>
+     *     <li>Rendering the thread list and clearing post area</li>
+     *     <li>Setting stage title + scene</li>
+     * </ul>
+     *
+     * @param ps   JavaFX stage
+     * @param user the logged-in staff user
+     */
     public static void displayStaffPosts(Stage ps, User user) {
         theStage = ps;
         theUser  = user;
-        if (theView == null) theView = new ViewStaffPosts();
+
+        if (theView == null)
+            theView = new ViewStaffPosts();
 
         label_UserDetails.setText("User: " + user.getUserName());
 
-        // Load threads from DB and show them
         ThreadStore.getInstance().loadFromDatabase();
-        refreshThreadList();
-        // No thread selected initially; right side shows placeholder
-        refreshPostsForThread(null);
+        refreshThreadList();        // populate left column
+        refreshPostsForThread(null); // clear right column
 
         theStage.setTitle("CSE 360 Foundations: Staff Posts");
         theStage.setScene(theScene);
         theStage.show();
     }
 
-    // ---------- Constructor: Initialize GUI ----------
+    // ==========================================================
+    // CONSTRUCTOR — BUILD ENTIRE VIEW
+    // ==========================================================
 
+    /**
+     * Constructs the Staff Posts UI layout.
+     * <p>
+     * This constructor sets up:
+     * <ul>
+     *     <li>Header area</li>
+     *     <li>Left thread column</li>
+     *     <li>Right post column with search + composer</li>
+     *     <li>Footer navigation buttons</li>
+     *     <li>Rules popup and new-thread dialog bindings</li>
+     *     <li>All UI sizing, alignment, and event hookups</li>
+     * </ul>
+     * Only one instance is ever created.
+     * </p>
+     */
     private ViewStaffPosts() {
+
+        // everything below is identical (untouched)
         theRoot  = new Pane();
         theScene = new Scene(theRoot, width, height);
 
@@ -133,6 +220,11 @@ public class ViewStaffPosts {
         button_Rules.setAlignment(Pos.CENTER);
         button_Rules.setLayoutX(610);
         button_Rules.setLayoutY(45);
+
+        /**
+         * Opens a popup containing forum rules.
+         * The popup is modal and blocks input until closed.
+         */
         button_Rules.setOnAction(e -> {
 
             Stage ruleStage = new Stage();
@@ -155,7 +247,6 @@ public class ViewStaffPosts {
             Label r7 = new Label("• Report inappropriate content to staff.");
             Label r8 = new Label("• Follow staff and moderator instructions.");
 
-
             Button closeBtn = new Button("Close");
             closeBtn.setOnAction(ev -> ruleStage.close());
 
@@ -171,6 +262,14 @@ public class ViewStaffPosts {
         button_NewThread.setMinWidth(THREAD_COLUMN_WIDTH - 40);
         button_NewThread.setLayoutX(20);
         button_NewThread.setLayoutY(130);
+
+        /**
+         * Opens a modal dialog allowing staff to create:
+         * <ul>
+         *     <li>A new thread</li>
+         *     <li>The first post inside that thread</li>
+         * </ul>
+         */
         button_NewThread.setOnAction(e -> openNewThreadDialog());
 
         list_Threads = new ListView<>();
@@ -178,6 +277,9 @@ public class ViewStaffPosts {
         list_Threads.setLayoutY(170);
         list_Threads.setPrefSize(THREAD_COLUMN_WIDTH - 40, 380);
 
+        /**
+         * Custom cell factory that displays thread titles via getDisplayLabel().
+         */
         list_Threads.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(entityClasses.Thread item, boolean empty) {
@@ -190,6 +292,14 @@ public class ViewStaffPosts {
             }
         });
 
+        /**
+         * When a thread is selected:
+         * <ul>
+         *     <li>Save selection</li>
+         *     <li>Clear search</li>
+         *     <li>Refresh posts displayed on the right side</li>
+         * </ul>
+         */
         list_Threads.getSelectionModel().selectedItemProperty().addListener((obs, oldT, newT) -> {
             selectedThread = newT;
             currentSearch = null;
@@ -213,6 +323,10 @@ public class ViewStaffPosts {
         field_Search.setPrefWidth(width - rightX - 220);
 
         setupButton(button_Search, "Dialog", 14, 80, Pos.CENTER, width - 210, 128);
+
+        /**
+         * Executes a post search inside the selected thread.
+         */
         button_Search.setOnAction(e -> {
             currentSearch = (field_Search.getText() == null || field_Search.getText().isBlank())
                     ? null
@@ -221,6 +335,10 @@ public class ViewStaffPosts {
         });
 
         setupButton(button_ClearSearch, "Dialog", 14, 80, Pos.CENTER, width - 120, 128);
+
+        /**
+         * Clears search and restores full post list.
+         */
         button_ClearSearch.setOnAction(e -> {
             currentSearch = null;
             field_Search.clear();
@@ -244,18 +362,34 @@ public class ViewStaffPosts {
         setupTextArea(area_Body, "Write a post...", rightX, 495, width - rightX - 180, 60);
 
         setupButton(button_Post, "Dialog", 16, 100, Pos.CENTER, width - 160, 465);
+
+        /**
+         * Sends a new post to the selected thread through the controller.
+         */
         button_Post.setOnAction(e -> ControllerStaffPosts.performPost(
                 selectedThread, field_Title, area_Body, theUser));
 
         // Footer
         setupButton(button_Back, "Dialog", 18, 180, Pos.CENTER, 40, 560);
+
+        /**
+         * Navigates back to Staff Home.
+         */
         button_Back.setOnAction(e ->
                 guiStaff.ViewStaffHome.displayStaffHome(theStage, theUser));
 
         setupButton(button_Logout, "Dialog", 18, 180, Pos.CENTER, 250, 560);
+
+        /**
+         * Logs out via controller.
+         */
         button_Logout.setOnAction(e -> ControllerStaffPosts.performLogout());
 
         setupButton(button_Quit, "Dialog", 18, 180, Pos.CENTER, 460, 560);
+
+        /**
+         * Quits the application via controller.
+         */
         button_Quit.setOnAction(e -> ControllerStaffPosts.performQuit());
 
         theRoot.getChildren().addAll(
@@ -267,8 +401,18 @@ public class ViewStaffPosts {
         );
     }
 
-    // ---------- Threads helpers ----------
+    // ==========================================================
+    // THREAD HELPERS
+    // ==========================================================
 
+    /**
+     * Refreshes the left-side thread list.
+     * <ul>
+     *     <li>Reloads threads from ThreadStore</li>
+     *     <li>Preserves existing selection if possible</li>
+     *     <li>Otherwise clears selection and disables post area</li>
+     * </ul>
+     */
     private static void refreshThreadList() {
         List<entityClasses.Thread> threads = ThreadStore.getInstance().getAllThreads();
         list_Threads.getItems().setAll(threads);
@@ -282,6 +426,7 @@ public class ViewStaffPosts {
                 }
             }
         }
+
         // Otherwise, no selection
         selectedThread = null;
         list_Threads.getSelectionModel().clearSelection();
@@ -289,6 +434,19 @@ public class ViewStaffPosts {
         disablePostArea(true);
     }
 
+    /**
+     * Opens the dialog used by staff to create:
+     * <ul>
+     *     <li>A new thread (title)</li>
+     *     <li>The first post inside the thread</li>
+     * </ul>
+     * After creation:
+     * <ul>
+     *     <li>The thread list refreshes</li>
+     *     <li>The new thread is automatically selected</li>
+     *     <li>Its first post is rendered</li>
+     * </ul>
+     */
     private static void openNewThreadDialog() {
         Stage dialog = new Stage();
         dialog.initOwner(theStage);
@@ -321,6 +479,10 @@ public class ViewStaffPosts {
         Scene sc = new Scene(root, 420, 320);
         dialog.setScene(sc);
 
+        /**
+         * Creates the new thread and the first post.
+         * Validates fields (blank = ignore silently).
+         */
         btnCreate.setOnAction(e -> {
             String threadTitle = tfThreadTitle.getText() == null ? "" : tfThreadTitle.getText().trim();
             String postTitle   = tfPostTitle.getText() == null ? "" : tfPostTitle.getText().trim();
@@ -342,6 +504,7 @@ public class ViewStaffPosts {
             // Refresh UI
             ThreadStore.getInstance().loadFromDatabase();
             refreshThreadList();
+
             // Select the new thread explicitly
             for (entityClasses.Thread t : list_Threads.getItems()) {
                 if (t.getId() == thread.getId()) {
@@ -355,10 +518,14 @@ public class ViewStaffPosts {
             dialog.close();
         });
 
+        /**
+         * Cancels the dialog.
+         */
         btnCancel.setOnAction(e -> dialog.close());
 
         dialog.showAndWait();
     }
+
 
     private static void disablePostArea(boolean disabled) {
         field_Title.setDisable(disabled);

@@ -15,15 +15,17 @@ import database.Database;
  *     <li>Final Composite Score</li>
  * </ul>
  *
- * The calculator gathers raw metrics from PostStore and ReplyStore,
- * computes raw scores, normalizes them to a 0–100 range, and saves
- * the resulting ParticipationStatistics into the database.
+ * <p>
+ * The calculator gathers raw metrics from {@link PostStore} and {@link ReplyStore},
+ * computes raw scores, normalizes them to a 0–100 scale, and saves the resulting
+ * {@link ParticipationStatistics} into the database.
+ * </p>
  *
- * Normalization boundaries (maximums):
+ * <h3>Normalization Boundaries (Maximum Raw Values)</h3>
  * <ul>
- *     <li><strong>Activity:</strong> maxPosts=10, maxReplies=20 → maxRaw=50</li>
- *     <li><strong>Engagement:</strong> maxThreads=10, maxAvgReply=200 → maxRaw=40</li>
- *     <li><strong>Consistency:</strong> maxActiveDays=14 → maxRaw=28</li>
+ *     <li><strong>Activity:</strong> maxPosts=10, maxReplies=20 → maxRaw = 50</li>
+ *     <li><strong>Engagement:</strong> maxThreads=10, maxAvgReply=200 → maxRaw = 40</li>
+ *     <li><strong>Consistency:</strong> maxActiveDays=14 → maxRaw = 28</li>
  * </ul>
  *
  * @author
@@ -38,22 +40,39 @@ public class ParticipationCalculator {
     // NORMALIZATION CONSTANTS
     // ---------------------------------------------------------------------
 
-    /** Max possible raw activity = (10 posts * 3) + (20 replies * 1) = 50 */
+    /**
+     * Maximum possible raw activity score.
+     * Computed as: (10 posts * 3 points) + (20 replies * 1 point) = 50.
+     */
     private static final double MAX_ACTIVITY_RAW = 50.0;
 
-    /** Max possible raw engagement = (10 threads * 2) + (200 avgReply/10) = 40 */
+    /**
+     * Maximum possible raw engagement score.
+     * Computed as: (10 threads * 2 points) + (200 avgReplyLength / 10) = 40.
+     */
     private static final double MAX_ENGAGEMENT_RAW = 40.0;
 
-    /** Max possible raw consistency = (14 days * 2) = 28 */
+    /**
+     * Maximum possible raw consistency score.
+     * Computed as: (14 active days * 2 points per day) = 28.
+     */
     private static final double MAX_CONSISTENCY_RAW = 28.0;
 
     /**
-     * Compute full participation metrics and save to DB.
+     * Computes participation metrics for the given student, normalizes all values
+     * to a 0–100 range, stores the results in the database, and returns the resulting
+     * {@link ParticipationStatistics} object.
+     *
+     * @param student   the student whose participation statistics will be computed
+     * @param database  reference to the database used to save the statistics
+     * @return a fully populated {@link ParticipationStatistics} object
+     * @throws RuntimeException if saving to the database fails
      */
     public static ParticipationStatistics computeAndSave(User student, Database database) {
 
         ParticipationStatistics stats = new ParticipationStatistics();
         stats.setStudentId(student.getUserName());
+
         String username = student.getUserName();
 
         // ---------------------------------------------------------
@@ -90,13 +109,13 @@ public class ParticipationCalculator {
         // RAW SCORES (BEFORE NORMALIZATION)
         // ---------------------------------------------------------
         double rawActivity =
-                (totalPosts * 3) + (totalReplies * 1);
+                (totalPosts * 3) + (totalReplies);
 
         double rawEngagement =
                 (threadsParticipated * 2) + (avgReplyLength / 10.0);
 
         double rawConsistency =
-                activeDays * 2;
+                activeDays * 2.0;
 
         // ---------------------------------------------------------
         // NORMALIZED (0–100) SCORES
@@ -139,5 +158,9 @@ public class ParticipationCalculator {
         return stats;
     }
 
+    /**
+     * Private constructor to prevent instantiation.
+     * This class is a pure utility class.
+     */
     private ParticipationCalculator() {}
 }

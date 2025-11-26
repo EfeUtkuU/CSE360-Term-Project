@@ -4,32 +4,46 @@ import database.Database;
 import java.sql.SQLException;
 
 /**
- * <p><strong>Class:</strong> ParticipationStore</p>
+ * <h2>Class: ParticipationStore</h2>
  *
- * <p><strong>Description:</strong>
- * Centralized manager for loading, computing, and saving participation
- * statistics for students. Mirrors PostStore, ReplyStore, and ThreadStore
- * by providing a single shared instance that wraps all database access.
- *
- * Ensures:
- *  - MVC controllers never touch the Database class directly
- *  - Participation statistics are recomputed automatically when missing
- *  - All participation-related operations live in one consistent place
- *
- * Uses OPTION A: auto-compute and save if stats are missing.
+ * <p><strong>Description:</strong><br>
+ * Centralized manager responsible for loading, computing, and saving
+ * participation statistics for students. This class mirrors the design
+ * of {@code PostStore}, {@code ReplyStore}, and {@code ThreadStore} by
+ * providing a single shared singleton instance.
  * </p>
  *
- * @version 1.00 — 2025-11-24 — Initial implementation.
+ * <p>The {@code ParticipationStore} ensures that:</p>
+ * <ul>
+ *   <li>MVC controllers never interact with the {@link Database} directly</li>
+ *   <li>Participation statistics are automatically generated when missing</li>
+ *   <li>All participation-related operations reside in one unified service</li>
+ * </ul>
+ *
+ * <p>
+ * This implementation follows <strong>Option A</strong>:  
+ * if statistics for a student do not exist, they are automatically computed
+ * and stored in the database.
+ * </p>
+ *
+ * @version
+ *   1.00 — 2025-11-24 — Initial implementation.
  */
 public final class ParticipationStore {
 
-    /** Singleton instance */
+    /** Singleton instance of the store. */
     private static final ParticipationStore instance = new ParticipationStore();
 
-    /** Shared database connection */
+    /** Shared database connection used for all operations. */
     private Database db;
 
-    /** Private constructor — initializes DB connection and table. */
+    /**
+     * Private constructor.
+     * <p>
+     * Initializes the shared database reference and ensures that the
+     * necessary participation statistics table exists.
+     * </p>
+     */
     private ParticipationStore() {
         try {
             db = applicationMain.FoundationsMain.database;
@@ -39,7 +53,11 @@ public final class ParticipationStore {
         }
     }
 
-    /** @return shared singleton instance */
+    /**
+     * Returns the singleton instance of this store.
+     *
+     * @return shared instance of {@code ParticipationStore}
+     */
     public static ParticipationStore getInstance() {
         return instance;
     }
@@ -49,15 +67,17 @@ public final class ParticipationStore {
     // ----------------------------------------------------------------------
 
     /**
-     * Loads participation statistics for a user.
+     * Loads participation statistics for a specific student.
+     * <p>
+     * If no saved statistics are found for the given username, new
+     * statistics are automatically computed using
+     * {@link ParticipationCalculator#computeAndSave(User, Database)}
+     * and then stored in the database.
+     * </p>
      *
-     * If the user has no saved stats:
-     *   → automatically computes and saves new stats
-     *
-     * This ensures the stats screen always has full analytics.
-     *
-     * @param username student's username
-     * @return ParticipationStatistics (never null unless DB error)
+     * @param username the username of the student
+     * @return a {@link ParticipationStatistics} object, or {@code null}
+     *         if a database error occurs
      */
     public ParticipationStatistics loadStats(String username) {
         try {
@@ -74,29 +94,40 @@ public final class ParticipationStore {
             return stats;
 
         } catch (SQLException e) {
-            System.err.println("Error loading participation stats for "
-                    + username + ": " + e.getMessage());
+            System.err.println(
+                    "Error loading participation stats for " + username + ": " + e.getMessage());
             return null;
         }
     }
 
     /**
-     * Forces a full recompute for a specific student.
-     * Used by PostStore and ReplyStore after any activity change.
+     * Forces a full recompute of participation statistics for a specific student.
+     * <p>
+     * This method is typically invoked by {@code PostStore} or {@code ReplyStore}
+     * when a student's activity has changed (post, reply, edit, or delete).
+     * </p>
+     *
+     * @param user the student whose statistics need recomputation
+     * @return newly saved {@link ParticipationStatistics}, or {@code null} on error
      */
     public ParticipationStatistics recomputeFor(User user) {
         try {
             return ParticipationCalculator.computeAndSave(user, db);
         } catch (Exception e) {
-            System.err.println("Failed to update participation stats for "
-                    + user.getUserName() + ": " + e.getMessage());
+            System.err.println(
+                    "Failed to update participation stats for " + user.getUserName()
+                    + ": " + e.getMessage());
             return null;
         }
     }
 
     /**
-     * Called by other stores (PostStore, ReplyStore)
-     * whenever the student posts, replies, edits, or deletes.
+     * Public helper invoked by other stores whenever student activity occurs.
+     * <p>
+     * This triggers a full recomputation of the student's participation statistics.
+     * </p>
+     *
+     * @param user the student whose statistics should be updated
      */
     public void updateAfterActivity(User user) {
         recomputeFor(user);

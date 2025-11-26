@@ -18,6 +18,29 @@ import javafx.stage.Stage;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * <p><strong>Class:</strong> ViewStaffStatistics</p>
+ *
+ * <p><strong>Description:</strong>
+ * JavaFX view for displaying student-level discussion statistics to staff.
+ * The layout mirrors the structure of ViewStaffPosts:
+ * <ul>
+ *   <li>Left column — student selector + summary metrics</li>
+ *   <li>Right column — detailed per-thread activity</li>
+ *   <li>Bottom — navigation buttons</li>
+ * </ul>
+ *
+ * This class contains presentation logic only; all computation is handled by:
+ * <ul>
+ *   <li>{@code ControllerStaffStatistics}</li>
+ *   <li>{@code ModelStaffStatistics}</li>
+ *   <li>{@code ParticipationStore}</li>
+ * </ul>
+ *
+ * 
+ *
+ * @version 2.00 — 2025-11-24 — Completed stats view integrated with participation scoring
+ */
 public class ViewStaffStatistics {
 
     // ---------- Shared State ----------
@@ -66,6 +89,12 @@ public class ViewStaffStatistics {
 
     // ---------- Public entry point ----------
 
+    /**
+     * Displays the statistics page for staff.
+     *
+     * @param ps        Primary stage
+     * @param staffUser The staff user currently logged in
+     */
     public static void display(Stage ps, User staffUser) {
         theStage = ps;
         theUser  = staffUser;
@@ -74,10 +103,10 @@ public class ViewStaffStatistics {
 
         label_UserDetails.setText("User: " + theUser.getUserName());
 
-        // Load students into dropdown
+        // Load dropdown contents
         loadStudentsIntoDropdown();
 
-        // Reset UI text
+        // Reset view
         labelTotals.setText("Select a student to view their activity.");
         summaryLeftBox.getChildren().clear();
         summaryScoresBox.getChildren().clear();
@@ -88,8 +117,11 @@ public class ViewStaffStatistics {
         theStage.show();
     }
 
-    // ---------- Constructor: Initialize GUI (similar structure to ViewStaffPosts) ----------
+    // ---------- Constructor: Initialize GUI ----------
 
+    /**
+     * Builds the entire JavaFX layout. Parallels ViewStaffPosts to maintain a consistent UI.
+     */
     private ViewStaffStatistics() {
         theRoot  = new Pane();
         theScene = new Scene(theRoot, width, height);
@@ -98,7 +130,7 @@ public class ViewStaffStatistics {
         setupLabel(label_PageTitle, "Arial", 28, width, Pos.CENTER, 0, 5);
         setupLabel(label_UserDetails, "Arial", 20, width, Pos.BASELINE_LEFT, 20, 55);
 
-        // ----- Left: Students + Summary (occupy the same strip where threads were) -----
+        // ----- Left: Students + Summary -----
         setupLabel(label_Students, "Arial", 18,
                 LEFT_COLUMN_WIDTH - 40, Pos.BASELINE_LEFT, 20, 100);
 
@@ -109,7 +141,6 @@ public class ViewStaffStatistics {
         studentDropdown.setLayoutY(130);
         studentDropdown.setOnAction(e -> handleStudentSelected());
 
-        // Summary container: fixed position and size (no dynamic pushing of buttons)
         summaryContainer = new VBox(10);
         setupVBox(summaryContainer, 20, 170, LEFT_COLUMN_WIDTH, 280);
         summaryContainer.setPadding(new Insets(5));
@@ -118,20 +149,15 @@ public class ViewStaffStatistics {
         labelTotals.setFont(Font.font("Arial", 14));
 
         summaryLeftBox = new VBox(6);
-        summaryLeftBox.setPadding(new Insets(5));
-
         summaryScoresBox = new VBox(6);
-        summaryScoresBox.setPadding(new Insets(5));
 
         HBox twoColumnSummary = new HBox(40, summaryLeftBox, summaryScoresBox);
         summaryContainer.getChildren().addAll(labelTotals, twoColumnSummary);
 
-        // ----- Right: Activity Panel (fixed size, same region as posts scroll) -----
+        // ----- Right: Activity Panel -----
         label_ActivityPanel.setFont(Font.font("Arial", 18));
-        label_ActivityPanel.setAlignment(Pos.BASELINE_LEFT);
         label_ActivityPanel.setLayoutX(rightX);
         label_ActivityPanel.setLayoutY(100);
-        label_ActivityPanel.setMinWidth(width - rightX - 40);
 
         activityContainer = new VBox(10);
         setupVBox(activityContainer, rightX, 130, width - rightX - 40, 350);
@@ -139,7 +165,7 @@ public class ViewStaffStatistics {
         ScrollPane sp = new ScrollPane(activityContainer);
         setupScroll(sp, rightX, 130, width - rightX - 40, 350);
 
-        // ----- Footer (exact same positions as ViewStaffPosts) -----
+        // ----- Footer -----
         setupButton(button_Back, "Dialog", 18, 180, Pos.CENTER, 40, 560);
         button_Back.setOnAction(e ->
                 guiStaff.ViewStaffHome.displayStaffHome(theStage, theUser));
@@ -150,7 +176,6 @@ public class ViewStaffStatistics {
         setupButton(button_Quit, "Dialog", 18, 180, Pos.CENTER, 460, 560);
         button_Quit.setOnAction(e -> ControllerStaffPosts.performQuit());
 
-        // ----- Add everything to root -----
         theRoot.getChildren().addAll(
                 label_PageTitle, label_UserDetails, line_Separator1,
                 label_Students, studentDropdown, summaryContainer,
@@ -161,6 +186,10 @@ public class ViewStaffStatistics {
 
     // ---------- Load students ----------
 
+    /**
+     * Loads all student users into the dropdown.
+     * Uses {@code User.loadStudentUsers()} provided by your model.
+     */
     private static void loadStudentsIntoDropdown() {
         studentDropdown.getItems().clear();
         List<User> allUsers = ControllerStaffStatistics.loadStudentUsers();
@@ -174,6 +203,16 @@ public class ViewStaffStatistics {
 
     // ---------- Selection handling ----------
 
+    /**
+     * Called when a student is selected from the dropdown.
+     * Updates all UI components:
+     * <ul>
+     *     <li>Totals (posts + replies)</li>
+     *     <li>Participation summary</li>
+     *     <li>Scores</li>
+     *     <li>Thread-level activity</li>
+     * </ul>
+     */
     private static void handleStudentSelected() {
         User selected = studentDropdown.getValue();
         ControllerStaffStatistics.selectStudent(selected);
@@ -195,8 +234,15 @@ public class ViewStaffStatistics {
         renderActivity();
     }
 
-    // ---------- Summary + Scores (left column) ----------
+    // ---------- Summary + Scores ----------
 
+    /**
+     * Renders:
+     * <ul>
+     *     <li>Participation summary (threads, days active, avg reply length)</li>
+     *     <li>Scoring metrics (activity, engagement, consistency, final score)</li>
+     * </ul>
+     */
     private static void renderSummary() {
         summaryLeftBox.getChildren().clear();
         summaryScoresBox.getChildren().clear();
@@ -204,7 +250,6 @@ public class ViewStaffStatistics {
         if (ControllerStaffStatistics.getSelectedStudent() == null)
             return;
 
-        // Left side: participation summary
         Label partTitle = new Label("Participation Summary");
         partTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 16;");
         
@@ -231,8 +276,12 @@ public class ViewStaffStatistics {
         );
     }
 
-    // ---------- Activity panel (right side, fixed size) ----------
+    // ---------- Right-side Activity Panel ----------
 
+    /**
+     * Renders the full per-thread activity breakdown for the selected student.
+     * Shows all posts and replies, grouped by thread.
+     */
     private static void renderActivity() {
         activityContainer.getChildren().clear();
 
@@ -250,6 +299,12 @@ public class ViewStaffStatistics {
         }
     }
 
+    /**
+     * Builds a collapsible pane representing activity inside a single thread.
+     *
+     * @param ta ThreadActivity object for the student
+     * @return TitledPane summarizing all posts + replies for that thread
+     */
     private static TitledPane buildThreadPane(ModelStaffStatistics.ThreadActivity ta) {
 
         VBox threadBox = new VBox(12);
@@ -274,6 +329,18 @@ public class ViewStaffStatistics {
         return tp;
     }
 
+    /**
+     * Builds a card showing one post:
+     * <ul>
+     *     <li>Title</li>
+     *     <li>Body</li>
+     *     <li>Metadata (author, timestamp, edited)</li>
+     *     <li>Replies under this post</li>
+     * </ul>
+     *
+     * @param p the post
+     * @return VBox representing the card
+     */
     private static VBox buildPostCard(Post p) {
         VBox box = new VBox(6);
         box.setStyle("-fx-background-color: #f5f5f5; -fx-padding: 10; -fx-background-radius: 8;");
@@ -313,6 +380,12 @@ public class ViewStaffStatistics {
         return box;
     }
 
+    /**
+     * Builds a compact row showing one reply.
+     *
+     * @param r reply object
+     * @return HBox containing reply text and timestamp
+     */
     private static HBox buildReplyRow(Reply r) {
         HBox row = new HBox(6);
         row.setAlignment(Pos.TOP_LEFT);
@@ -331,6 +404,13 @@ public class ViewStaffStatistics {
         return row;
     }
 
+    /**
+     * Builds a card showing a reply + the post it belongs under.
+     * Useful when the student replied inside a thread but did not author the post.
+     *
+     * @param r reply object
+     * @return VBox card showing reply + parent post context
+     */
     private static VBox buildReplyContextCard(Reply r) {
 
         Post parent = null;
@@ -374,8 +454,11 @@ public class ViewStaffStatistics {
         return box;
     }
 
-    // ---------- Helper methods (same patterns as ViewStaffPosts) ----------
+    // ---------- Helper Methods (documentation only) ----------
 
+    /**
+     * Utility to configure a Label with layout + font + alignment.
+     */
     private static void setupLabel(Label l, String ff, double f, double w, Pos p, double x, double y) {
         l.setFont(Font.font(ff, f));
         l.setMinWidth(w);
@@ -384,6 +467,9 @@ public class ViewStaffStatistics {
         l.setLayoutY(y);
     }
 
+    /**
+     * Utility to configure a Button with layout + font + width.
+     */
     private static void setupButton(Button b, String ff, double f, double w, Pos p, double x, double y) {
         b.setFont(Font.font(ff, f));
         b.setMinWidth(w);
@@ -392,12 +478,18 @@ public class ViewStaffStatistics {
         b.setLayoutY(y);
     }
 
+    /**
+     * Utility to configure a VBox with fixed position + size.
+     */
     private static void setupVBox(VBox v, double x, double y, double w, double h) {
         v.setLayoutX(x);
         v.setLayoutY(y);
         v.setPrefSize(w, h);
     }
 
+    /**
+     * Utility to configure a ScrollPane with fixed position + size.
+     */
     private static void setupScroll(ScrollPane s, double x, double y, double w, double h) {
         s.setLayoutX(x);
         s.setLayoutY(y);

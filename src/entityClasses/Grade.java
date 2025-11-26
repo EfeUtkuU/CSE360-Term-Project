@@ -1,24 +1,36 @@
 package entityClasses;
 
-/*******
- * <p><strong>Title:</strong> Grade Class</p>
+/**
+ * <h2>Class: Grade</h2>
  *
- * <p><strong>Description:</strong> 
- * The {@code Grade} class represents a student’s assigned grade in the system.
- * A grade is created by a staff member and contains:
- *   - the student's username
- *   - the staff grader's username
- *   - a numeric grade value (0–100)
- *   - feedback text
+ * <p><strong>Description:</strong><br>
+ * The {@code Grade} class represents a grade assigned to a student by a staff
+ * member. A grade entry consists of:
+ * </p>
  *
- * The grade may also have replies (chat messages) stored in GRADE_REPLIES,
- * but those are not stored in this class—this class only stores main grade data.
+ * <ul>
+ *   <li>the student's username</li>
+ *   <li>the staff grader's username</li>
+ *   <li>a numeric grade value (0–100)</li>
+ *   <li>feedback text</li>
+ * </ul>
  *
- * This object is used by GradeStore to sync with the database.
+ * <p>
+ * Replies (chat messages) between the student and staff regarding this grade
+ * are stored externally in the {@code GRADE_REPLIES} table and are not part
+ * of this class. This object stores only the core grade information.
+ * </p>
+ *
+ * <p>
+ * The {@code GradeStore} class uses this object to synchronize with the
+ * database.
  * </p>
  *
  * @author 
- * @version 1.00 — 2025-11-24 — Initial version aligned with project standards
+ *   Efe Utku Ural
+ *
+ * @version
+ *   1.00 — 2025-11-24 — Initial version aligned with project standards
  */
 public class Grade {
 
@@ -27,34 +39,38 @@ public class Grade {
     /** Unique database ID of this grade entry. */
     private int id;
 
-    /** Username of the student who receives the grade. */
+    /** Username of the student receiving the grade. */
     private String studentId;
 
-    /** Username of the staff member who assigned the grade. */
+    /** Username of the staff member assigning the grade. */
     private String staffId;
 
-    /** The numeric grade value (0–100). */
+    /** Numeric grade value (range 0–100). */
     private int gradeValue;
 
-    /** The feedback text written by the staff member. */
+    /** Feedback message written by the staff grader. */
     private String feedback;
 
 
     // ---------------------- Constructors ----------------------
 
     /**
-     * Default constructor. Rarely used.
+     * Default constructor.
+     * <p>
+     * Typically used only when populating objects through reflection or
+     * database frameworks.
+     * </p>
      */
     public Grade() {}
 
     /**
-     * Full constructor with database ID.
+     * Constructs a full {@code Grade} object with an existing database ID.
      *
-     * @param id          the database ID
-     * @param studentId   the student’s username
-     * @param staffId     the staff member’s username
-     * @param gradeValue  numeric grade (0–100)
-     * @param feedback    staff feedback text
+     * @param id         the grade's unique database ID
+     * @param studentId  username of the student receiving the grade
+     * @param staffId    username of the staff member who assigned the grade
+     * @param gradeValue numeric grade value (0–100)
+     * @param feedback   feedback text written by the staff member
      */
     public Grade(int id, String studentId, String staffId, int gradeValue, String feedback) {
         this.id = id;
@@ -65,12 +81,13 @@ public class Grade {
     }
 
     /**
-     * Constructor for creating new grades before they receive a database ID.
+     * Constructs a {@code Grade} object for new records that have not yet been
+     * assigned a database ID.
      *
-     * @param studentId   the student’s username
-     * @param staffId     the staff member’s username
-     * @param gradeValue  numeric grade (0–100)
-     * @param feedback    staff feedback text
+     * @param studentId  username of the student receiving the grade
+     * @param staffId    username of the staff member who assigned the grade
+     * @param gradeValue numeric grade value (0–100)
+     * @param feedback   feedback text written by the staff member
      */
     public Grade(String studentId, String staffId, int gradeValue, String feedback) {
         this.studentId = studentId;
@@ -82,33 +99,87 @@ public class Grade {
 
     // ---------------------- Getters ----------------------
 
-    /** @return the database ID of this grade */
+    /**
+     * Returns the unique database ID.
+     *
+     * @return the grade's ID
+     */
     public int getId() { return id; }
 
-    /** @return the student's username */
+    /**
+     * Returns the username of the student who received the grade.
+     *
+     * @return the student username
+     */
     public String getStudentId() { return studentId; }
 
-    /** @return the staff member's username */
+    /**
+     * Returns the username of the staff member who assigned the grade.
+     *
+     * @return the staff username
+     */
     public String getStaffId() { return staffId; }
 
-    /** @return the numeric grade value */
+    /**
+     * Returns the numeric grade value.
+     *
+     * @return the grade (0–100)
+     */
     public int getGradeValue() { return gradeValue; }
 
-    /** @return the feedback text */
+    /**
+     * Returns the feedback text associated with this grade.
+     *
+     * @return feedback message
+     */
     public String getFeedback() { return feedback; }
 
 
     // ---------------------- Setters ----------------------
 
+    /**
+     * Sets the database ID for this grade entry.
+     *
+     * @param id new database ID
+     */
     public void setId(int id) { this.id = id; }
+
+    /**
+     * Sets the student username associated with this grade.
+     *
+     * @param s the student's username
+     */
     public void setStudentId(String s) { this.studentId = s; }
+
+    /**
+     * Sets the staff member's username.
+     *
+     * @param s the staff username
+     */
     public void setStaffId(String s) { this.staffId = s; }
+
+    /**
+     * Sets the numeric grade value (0–100).
+     *
+     * @param v new grade value
+     */
     public void setGradeValue(int v) { this.gradeValue = v; }
+
+    /**
+     * Sets the staff feedback text.
+     *
+     * @param f the feedback message
+     */
     public void setFeedback(String f) { this.feedback = f; }
 
 
     // ---------------------- Utility ----------------------
 
+    /**
+     * Returns a short descriptive representation of the grade.
+     *
+     * @return a formatted string containing student and grade value
+     */
     @Override
     public String toString() {
         return "Grade[" + studentId + " → " + gradeValue + "]";

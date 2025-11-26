@@ -28,7 +28,7 @@ public class ControllerStaffStatistics {
     /** The student whose activity we are showing. */
     private static User selectedStudent;
 
-    /** Thread-level breakdown of posts & replies. */
+    /** Thread-level breakdown of posts and replies. */
     private static List<ModelStaffStatistics.ThreadActivity> activityList;
 
     /** Cached participation metrics for the selected student. */
@@ -39,10 +39,16 @@ public class ControllerStaffStatistics {
     // ----------------------------------------------------------------------
 
     /**
-     * Called by the View when the staff selects a student.
-     * Automatically loads:
-     *  - per-thread post/reply activity
-     *  - participation metrics (auto-compute if missing)
+     * Selects a student to display statistics for.
+     * <p>
+     * This automatically:
+     * <ul>
+     *     <li>Loads the student's per-thread activity breakdown</li>
+     *     <li>Loads participation metrics via {@link ParticipationStore}</li>
+     * </ul>
+     * If {@code student == null}, all related fields reset to empty.
+     *
+     * @param student the student being selected, or {@code null} to clear selection
      */
     public static void selectStudent(User student) {
         selectedStudent = student;
@@ -61,12 +67,20 @@ public class ControllerStaffStatistics {
         }
     }
 
-    /** @return selected student or null. */
+    /**
+     * Returns the currently selected student.
+     *
+     * @return the selected student or {@code null} if none selected
+     */
     public static User getSelectedStudent() {
         return selectedStudent;
     }
 
-    /** @return per-thread activity list. */
+    /**
+     * Returns the per-thread activity list for the selected student.
+     *
+     * @return list of thread activity objects
+     */
     public static List<ModelStaffStatistics.ThreadActivity> getActivityList() {
         return activityList;
     }
@@ -75,11 +89,21 @@ public class ControllerStaffStatistics {
     //  BASIC COUNTS (existing)
     // ----------------------------------------------------------------------
 
+    /**
+     * Computes how many posts the selected student has created.
+     *
+     * @return total number of posts
+     */
     public static int getTotalPosts() {
         if (activityList == null) return 0;
         return ModelStaffStatistics.countTotalPosts(activityList);
     }
 
+    /**
+     * Computes how many replies the selected student has created.
+     *
+     * @return total number of replies
+     */
     public static int getTotalReplies() {
         if (activityList == null) return 0;
         return ModelStaffStatistics.countTotalReplies(activityList);
@@ -89,86 +113,103 @@ public class ControllerStaffStatistics {
     //  PARTICIPATION METRICS (New)
     // ----------------------------------------------------------------------
 
+    /**
+     * Returns the full ParticipationStatistics object for the selected student.
+     *
+     * @return stats object or {@code null} if none loaded
+     */
     public static ParticipationStatistics getParticipationStats() {
         return participationStats;
     }
 
+    /**
+     * Returns how many threads the student has participated in.
+     *
+     * @return thread count
+     */
     public static int getThreadsParticipated() {
         return participationStats != null ? participationStats.getThreadsParticipated() : 0;
     }
 
+    /**
+     * Returns how many unique active days the student has participated on.
+     *
+     * @return number of active days
+     */
     public static int getActiveDays() {
         return participationStats != null ? participationStats.getActiveDays() : 0;
     }
 
+    /**
+     * Returns the student's average reply length.
+     *
+     * @return average reply length, in characters
+     */
     public static double getAverageReplyLength() {
         return participationStats != null ? participationStats.getAverageReplyLength() : 0.0;
     }
 
+    /**
+     * Returns the student's activity score (computed metric).
+     *
+     * @return activity score
+     */
     public static double getActivityScore() {
         return participationStats != null ? participationStats.getActivityScore() : 0.0;
     }
 
+    /**
+     * Returns the student's engagement score.
+     *
+     * @return engagement score
+     */
     public static double getEngagementScore() {
         return participationStats != null ? participationStats.getEngagementScore() : 0.0;
     }
 
+    /**
+     * Returns the student's consistency score.
+     *
+     * @return consistency score
+     */
     public static double getConsistencyScore() {
         return participationStats != null ? participationStats.getConsistencyScore() : 0.0;
     }
 
+    /**
+     * Returns the student's final aggregated participation score.
+     *
+     * @return the final participation score
+     */
     public static double getFinalScore() {
         return participationStats != null ? participationStats.getFinalScore() : 0.0;
     }
-    
+
     /**
-     * Logs out the current user and returns to the login page.
+     * Logs out the staff user and returns to the login view.
      */
     protected static void performLogout() {
         guiUserLogin.ViewUserLogin.displayUserLogin(ViewStaffStatistics.theStage);
     }
 
     /**
-     * Terminates the application.
+     * Quits the application entirely.
      */
     protected static void performQuit() {
         System.exit(0);
     }
 
-
     // ----------------------------------------------------------------------
     //  LOAD STUDENTS  (UNCHANGED)
-    //  (Your program always loads students like this — it's fine.)
     // ----------------------------------------------------------------------
 
+    /**
+     * Loads all users who have the "student" role.
+     *
+     * @return list of student users
+     */
     public static List<User> loadStudentUsers() {
-        List<User> result = new ArrayList<>();
-
-        try {
-            database.Database db = new database.Database();
-            db.connectToDatabase();
-            List<String[]> rows = db.getAllStudents();
-
-            for (String[] r : rows) {
-                User u = new User(
-                        r[0], "",           // username, password
-                        r[1], "",           // firstName, middleName
-                        r[2],               // lastName
-                        r[1],               // preferred name fallback
-                        r[3],               // email
-                        r[4].equals("Admin"),
-                        r[5].equals("Student"),
-                        r[6].equals("Staff")
-                );
-                result.add(u);
-            }
-
-            db.closeConnection();
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return result;
+        return User.loadStudentUsers();
     }
+
 }
