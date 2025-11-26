@@ -36,6 +36,7 @@ public class ViewStudentHome {
 
     // GUI Area 2 — Discussion Thread Button
     protected static Button button_OpenDiscussion = new Button("Open Discussion Thread");
+    protected static Button button_ViewGrade = new Button("View Grade & Feedback");
 
     // GUI Area 3
     protected static Line line_Separator4 = new Line(20, 525, width-20, 525);
@@ -85,6 +86,10 @@ public class ViewStudentHome {
         // Area 2 — Discussion Thread
         setupButtonUI(button_OpenDiscussion, "Dialog", 18, 250, Pos.CENTER, 500, 150);
         button_OpenDiscussion.setOnAction(e -> ControllerStudentHome.performOpenDiscussion(theStage, theUser));
+        
+        setupButtonUI(button_ViewGrade, "Dialog", 18, 250, Pos.CENTER, 500, 220);
+        button_ViewGrade.setOnAction(e -> guiStudentGrading.ControllerStudentGrading.displayStudentGrading(theStage, theUser));
+
 
         // Area 3
         setupButtonUI(button_Logout, "Dialog", 18, 250, Pos.CENTER, 20, 540);
@@ -95,7 +100,7 @@ public class ViewStudentHome {
 
         theRootPane.getChildren().addAll(
                 label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
-                button_OpenDiscussion, line_Separator4, button_Logout, button_Quit);
+                button_OpenDiscussion, button_ViewGrade, line_Separator4, button_Logout, button_Quit);
     }
 
     // Helpers

@@ -7,72 +7,124 @@ import java.util.List;
  * <p><strong>Class:</strong> ModelStaffPosts</p>
  *
  * <p><strong>Description:</strong>
- * Model layer for the Staff Posts page. Handles database persistence through
- * {@link PostStore} and {@link ReplyStore}. Staff users have full permissions to
- * edit or delete any post or reply. All IDs are managed by the database itself.
+ * Staff-level CRUD. Staff can modify ANY post or reply across ANY thread.
  * </p>
- *
- * @version 3.00 — 2025-10-27 — Updated for DB-managed IDs and full staff privileges
  */
 public final class ModelStaffPosts {
 
     private ModelStaffPosts() {}
 
-    // -------------------- POSTS --------------------
+    // --------------------------------------------------------------------
+    // THREADS
+    // --------------------------------------------------------------------
 
-    /** Add a new post authored by the staff user. */
-    public static void addPost(User user, String title, String content) {
-        if (content == null || content.isBlank()) return;
-        String safeTitle = (title == null || title.isBlank()) ? "Staff Post" : title.trim();
-        Post post = new Post(user, safeTitle, content.trim(), "", false, false);
-        PostStore.getInstance().addPost(post);
+    /**
+     * Creates a new thread plus a root post, authored by a staff user.
+     *
+     * @param user        Staff user
+     * @param threadTitle Thread title
+     * @param postTitle   Root post title
+     * @param content     Root post body
+     */
+    public static entityClasses.Thread createNewThread(
+            User user,
+            String threadTitle,
+            String postTitle,
+            String content
+    ) {
+        if (content == null || content.isBlank()) return null;
+
+        String safeThreadTitle = (threadTitle == null || threadTitle.isBlank())
+                ? "New Thread"
+                : threadTitle.trim();
+
+        String safePostTitle = (postTitle == null || postTitle.isBlank())
+                ? "Root Post"
+                : postTitle.trim();
+
+        entityClasses.Thread thread = ThreadStore.getInstance()
+                .createThread(safeThreadTitle, user.getUserName());
+
+        if (thread == null) return null;
+
+        PostStore.getInstance()
+                .addPostToThread(thread.getId(), user, safePostTitle, content.trim());
+
+        return thread;
     }
 
-    /** Edit any post (staff can edit all). */
+    /**
+     * ⚠️ Backwards compatible helper used by old controllers:
+     * Treats "addPost" as "create a new thread with a root post".
+     */
+    public static void addPost(User user, String title, String content) {
+        if (content == null || content.isBlank()) return;
+
+        String safeTitle = (title == null || title.isBlank())
+                ? "Staff Post"
+                : title.trim();
+
+        createNewThread(user, safeTitle, safeTitle, content.trim());
+    }
+
+    // --------------------------------------------------------------------
+    // POSTS
+    // --------------------------------------------------------------------
+
+    public static void addPostToThread(
+            User user,
+            entityClasses.Thread thread,
+            String title,
+            String content
+    ) {
+        if (thread == null || content == null || content.isBlank()) return;
+
+        String safe = (title == null || title.isBlank()) ? "Staff Post" : title.trim();
+
+        PostStore.getInstance()
+                .addPostToThread(thread.getId(), user, safe, content.trim());
+    }
+
     public static void editPost(User user, Post post, String newTitle, String newBody) {
         if (post == null) return;
-        String updatedTitle = (newTitle == null || newTitle.isBlank()) ? post.getTitle() : newTitle.trim();
-        String updatedBody  = (newBody == null || newBody.isBlank()) ? post.getBody() : newBody.trim();
 
-        PostStore.getInstance().updatePost(post.getId(), user, updatedTitle, updatedBody);
+        String t = (newTitle == null || newTitle.isBlank()) ? post.getTitle() : newTitle.trim();
+        String b = (newBody == null || newBody.isBlank()) ? post.getBody() : newBody.trim();
+
+        // 🔑 use databaseId, not in-memory id
+        PostStore.getInstance().updatePost(post.getDatabaseId(), user, t, b);
         PostStore.getInstance().reloadFromDatabase();
     }
 
-    /** Delete any post (staff override). */
     public static void deletePost(User user, Post post) {
         if (post == null) return;
-        PostStore.getInstance().deletePost(post.getId(), user);
+        // 🔑 use databaseId, not in-memory id
+        PostStore.getInstance().deletePost(post.getDatabaseId(), user);
     }
 
-    /** Retrieve all posts from database. */
-    public static List<Post> getAllPosts() {
-        return PostStore.getInstance().getAllPosts();
+
+    public static List<Post> getPostsForThread(entityClasses.Thread thread) {
+        if (thread == null) return List.of();
+        return PostStore.getInstance().getPostsForThread(thread.getId());
     }
 
-    /** Search posts by keyword. */
-    public static List<Post> searchPosts(String keyword) {
-        if (keyword == null || keyword.isBlank())
-            return getAllPosts();
-        return PostStore.getInstance().searchPosts(keyword.trim());
-    }
+    // --------------------------------------------------------------------
+    // REPLIES
+    // --------------------------------------------------------------------
 
-    // -------------------- REPLIES --------------------
-
-    /** Add a reply to a specific post (staff can reply to any). */
     public static void addReply(User user, Post post, String text) {
         if (post == null || text == null || text.isBlank()) return;
-        Reply reply = new Reply(post, user, text.trim(), false);
-        ReplyStore.getInstance().addReply(reply);
+        ReplyStore.getInstance().addReply(new Reply(post, user, text.trim(), false));
     }
 
-    /** Edit any reply (staff override). */
-    public static void editReply(User user, int replyId, String newBody) {
+    public static void editReply(User user, Reply reply, String newBody) {
+        if (reply == null) return;
         if (newBody == null || newBody.isBlank()) return;
-        ReplyStore.getInstance().updateReply(replyId, user, newBody.trim());
+        ReplyStore.getInstance().updateReply(reply.getId(), user, newBody.trim());
     }
 
-    /** Delete any reply (staff override). */
-    public static void deleteReply(User user, int replyId) {
-        ReplyStore.getInstance().deleteReply(replyId, user);
+    public static void deleteReply(User user, Reply reply) {
+        if (reply == null) return;
+        ReplyStore.getInstance().deleteReply(reply.getId(), user);
     }
 }

@@ -2,14 +2,26 @@ package guiStaffPosts;
 
 import javafx.animation.*;
 import javafx.geometry.Pos;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.OverrunStyle;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Line;
 import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import entityClasses.*;
+
+import entityClasses.Post;
+import entityClasses.PostStore;
+import entityClasses.Reply;
+import entityClasses.ReplyStore;
+import entityClasses.ThreadStore;
+import entityClasses.User;
+import guiStaff.ControllerStaffHome;
+
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -17,103 +29,223 @@ import java.util.List;
  * <p><strong>Class:</strong> ViewStaffPosts</p>
  *
  * <p><strong>Description:</strong>
- * Staff version of the discussion posts page. Identical to the student layout but
- * with full privileges: staff can edit or delete <i>any</i> post or reply.
- * Uses database-managed IDs for persistence.</p>
+ * Staff version of the discussion posts page with forum threads.
+ * Left side shows a list of threads; right side shows posts and replies
+ * for the selected thread. Staff can edit/delete any post or reply.
+ * New posts are always attached to a selected thread; no posts exist
+ * outside threads. A popup is used to create a new thread along with
+ * its first post (thread title + post title + post body).
+ * </p>
  *
- * @version 3.00 — 2025-10-27 — Unified with StudentPosts (DB + staff privileges)
+ * @version 4.00 — 2025-11-22 — Thread-aware UI with two-column layout
  */
 public class ViewStaffPosts {
 
+    // ---------- Shared State ----------
+
     protected static Stage theStage;
-    protected static User theUser;
+    protected static User  theUser;
 
     private static final double width  = applicationMain.FoundationsMain.WINDOW_WIDTH;
+    @SuppressWarnings("unused")
     private static final double height = applicationMain.FoundationsMain.WINDOW_HEIGHT;
 
-    // Header + layout components
-    private static final Label label_PageTitle = new Label("Staff Posts");
+    // Header
+    private static final Label label_PageTitle   = new Label("Staff Posts");
     private static final Label label_UserDetails = new Label();
-    private static final Line  line_Separator1 = new Line(20, 95, width - 20, 95);
+    private static final Line  line_Separator1   = new Line(20, 95, width - 20, 95);
+    protected static Button button_Rules = new Button("RULES");
 
-    private static final TextField field_Search = new TextField();
-    private static final Button button_Search = new Button("Search");
-    private static final Button button_ClearSearch = new Button("Clear");
+    // Thread column (left)
+    private static final Label    label_Threads = new Label("Threads");
+    private static final Button   button_NewThread = new Button("New Thread");
+    private static       ListView<entityClasses.Thread> list_Threads;
 
-    private static VBox postContainer;
-    private static TextField field_Title;
-    private static TextArea area_Body;
+    // Posts/search (right)
+    private static final TextField field_Search       = new TextField();
+    private static final Button    button_Search      = new Button("Search");
+    private static final Button    button_ClearSearch = new Button("Clear");
+    private static final Label     label_CurrentThread = new Label("No thread selected");
+
+    private static VBox       postContainer;
+    private static TextField  field_Title;
+    private static TextArea   area_Body;
     private static final Button button_Post = new Button("Post");
 
-    private static final Button button_Back = new Button("Back");
+    // Footer
+    private static final Button button_Back   = new Button("Back");
     private static final Button button_Logout = new Button("Logout");
-    private static final Button button_Quit = new Button("Quit");
+    private static final Button button_Quit   = new Button("Quit");
 
+    // Scene and root
     private static ViewStaffPosts theView;
-    private static Scene theScene;
-    private static Pane theRoot;
+    private static Scene          theScene;
+    private static Pane           theRoot;
 
+    // Formatting + state
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-    // ---------- Display ----------
+    /** Currently selected thread in the UI (may be null). */
+    private static entityClasses.Thread selectedThread = null;
+
+    /** Current search query (posts are filtered within the selected thread). */
+    private static String currentSearch = null;
+
+    // Layout constants
+    private static final double THREAD_COLUMN_WIDTH = 260.0;
+
+    // ---------- Public entry point ----------
 
     public static void displayStaffPosts(Stage ps, User user) {
         theStage = ps;
-        theUser = user;
+        theUser  = user;
         if (theView == null) theView = new ViewStaffPosts();
 
         label_UserDetails.setText("User: " + user.getUserName());
-        refreshPosts();
+
+        // Load threads from DB and show them
+        ThreadStore.getInstance().loadFromDatabase();
+        refreshThreadList();
+        // No thread selected initially; right side shows placeholder
+        refreshPostsForThread(null);
 
         theStage.setTitle("CSE 360 Foundations: Staff Posts");
         theStage.setScene(theScene);
         theStage.show();
     }
 
-    // ---------- Initialize ----------
+    // ---------- Constructor: Initialize GUI ----------
 
     private ViewStaffPosts() {
-        theRoot = new Pane();
+        theRoot  = new Pane();
         theScene = new Scene(theRoot, width, height);
 
         // Header
         setupLabel(label_PageTitle, "Arial", 28, width, Pos.CENTER, 0, 5);
         setupLabel(label_UserDetails, "Arial", 20, width, Pos.BASELINE_LEFT, 20, 55);
 
-        // Search
-        field_Search.setPromptText("Search posts...");
-        field_Search.setLayoutX(40);
-        field_Search.setLayoutY(100);
-        field_Search.setPrefWidth(width - 260);
+        // ----- Left: Threads -----
+        setupLabel(label_Threads, "Arial", 18, THREAD_COLUMN_WIDTH - 40, Pos.BASELINE_LEFT, 20, 100);
+        
 
-        setupButton(button_Search, "Dialog", 14, 80, Pos.CENTER, width - 210, 98);
-        button_Search.setOnAction(e -> ControllerStaffPosts.performSearch(field_Search.getText()));
+        button_Rules.setFont(Font.font("Dialog",18));
+        button_Rules.setMinWidth(170);
+        button_Rules.setAlignment(Pos.CENTER);
+        button_Rules.setLayoutX(610);
+        button_Rules.setLayoutY(45);
+        button_Rules.setOnAction(e -> {
 
-        setupButton(button_ClearSearch, "Dialog", 14, 80, Pos.CENTER, width - 120, 98);
-        button_ClearSearch.setOnAction(e -> {
-            field_Search.clear();
-            ControllerStaffPosts.performClearSearch();
+            Stage ruleStage = new Stage();
+            ruleStage.setTitle("Rules");
+            ruleStage.initModality(Modality.APPLICATION_MODAL);
+
+            VBox box = new VBox(10);
+            box.setPadding(new Insets(15));
+            box.setAlignment(Pos.TOP_LEFT);
+
+            Label title = new Label("Rules");
+            title.setFont(Font.font("Dialog", FontWeight.BOLD, 20));
+
+            Label r1 = new Label("• Be respectful to all classmates and staff.");
+            Label r2 = new Label("• Stay on topic within each thread.");
+            Label r3 = new Label("• No spam, advertising, or irrelevant posts.");
+            Label r4 = new Label("• Use clear and professional language.");
+            Label r5 = new Label("• Academic honesty is required — no plagiarism.");
+            Label r6 = new Label("• Do not share private or sensitive information.");
+            Label r7 = new Label("• Report inappropriate content to staff.");
+            Label r8 = new Label("• Follow staff and moderator instructions.");
+
+
+            Button closeBtn = new Button("Close");
+            closeBtn.setOnAction(ev -> ruleStage.close());
+
+            box.getChildren().addAll(title, r1, r2, r3, r4, r5, r6, r7, r8, closeBtn);
+
+            Scene scene = new Scene(box, 350, 310);
+            ruleStage.setScene(scene);
+            ruleStage.show();
         });
 
-        // Posts list
+
+        button_NewThread.setFont(Font.font("Dialog", 13));
+        button_NewThread.setMinWidth(THREAD_COLUMN_WIDTH - 40);
+        button_NewThread.setLayoutX(20);
+        button_NewThread.setLayoutY(130);
+        button_NewThread.setOnAction(e -> openNewThreadDialog());
+
+        list_Threads = new ListView<>();
+        list_Threads.setLayoutX(20);
+        list_Threads.setLayoutY(170);
+        list_Threads.setPrefSize(THREAD_COLUMN_WIDTH - 40, 380);
+
+        list_Threads.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(entityClasses.Thread item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item.getDisplayLabel());
+                }
+            }
+        });
+
+        list_Threads.getSelectionModel().selectedItemProperty().addListener((obs, oldT, newT) -> {
+            selectedThread = newT;
+            currentSearch = null;
+            field_Search.clear();
+            refreshPostsForThread(selectedThread);
+        });
+
+        // ----- Right: Search + posts -----
+        double rightX = THREAD_COLUMN_WIDTH + 30;
+
+        label_CurrentThread.setFont(Font.font("Arial", 18));
+        label_CurrentThread.setAlignment(Pos.BASELINE_LEFT);
+        label_CurrentThread.setLayoutX(rightX);
+        label_CurrentThread.setLayoutY(100);
+        label_CurrentThread.setMinWidth(width - rightX - 40);
+
+        // Search field + buttons
+        field_Search.setPromptText("Search posts in this thread...");
+        field_Search.setLayoutX(rightX);
+        field_Search.setLayoutY(130);
+        field_Search.setPrefWidth(width - rightX - 220);
+
+        setupButton(button_Search, "Dialog", 14, 80, Pos.CENTER, width - 210, 128);
+        button_Search.setOnAction(e -> {
+            currentSearch = (field_Search.getText() == null || field_Search.getText().isBlank())
+                    ? null
+                    : field_Search.getText().trim();
+            refreshPostsForThread(selectedThread);
+        });
+
+        setupButton(button_ClearSearch, "Dialog", 14, 80, Pos.CENTER, width - 120, 128);
+        button_ClearSearch.setOnAction(e -> {
+            currentSearch = null;
+            field_Search.clear();
+            refreshPostsForThread(selectedThread);
+        });
+
+        // Posts list (scroll)
         postContainer = new VBox(10);
-        setupVBox(postContainer, 40, 140, width - 80, 300);
+        setupVBox(postContainer, rightX, 170, width - rightX - 40, 280);
         ScrollPane scroll = new ScrollPane(postContainer);
-        setupScroll(scroll, 40, 140, width - 80, 300);
+        setupScroll(scroll, rightX, 170, width - rightX - 40, 280);
 
         // Composer
         field_Title = new TextField();
         field_Title.setPromptText("Post title...");
-        field_Title.setLayoutX(40);
-        field_Title.setLayoutY(455);
-        field_Title.setPrefWidth(width - 220);
+        field_Title.setLayoutX(rightX);
+        field_Title.setLayoutY(465);
+        field_Title.setPrefWidth(width - rightX - 180);
 
         area_Body = new TextArea();
-        setupTextArea(area_Body, "Write a post...", 40, 485, width - 220, 60);
+        setupTextArea(area_Body, "Write a post...", rightX, 495, width - rightX - 180, 60);
 
-        setupButton(button_Post, "Dialog", 16, 100, Pos.CENTER, width - 160, 455);
-        button_Post.setOnAction(e ->
-                ControllerStaffPosts.performPost(field_Title, area_Body, theUser));
+        setupButton(button_Post, "Dialog", 16, 100, Pos.CENTER, width - 160, 465);
+        button_Post.setOnAction(e -> ControllerStaffPosts.performPost(
+                selectedThread, field_Title, area_Body, theUser));
 
         // Footer
         setupButton(button_Back, "Dialog", 18, 180, Pos.CENTER, 40, 560);
@@ -126,29 +258,171 @@ public class ViewStaffPosts {
         setupButton(button_Quit, "Dialog", 18, 180, Pos.CENTER, 460, 560);
         button_Quit.setOnAction(e -> ControllerStaffPosts.performQuit());
 
-        theRoot.getChildren().addAll(label_PageTitle, label_UserDetails, line_Separator1,
-                field_Search, button_Search, button_ClearSearch,
+        theRoot.getChildren().addAll(
+                label_PageTitle, label_UserDetails, button_Rules, line_Separator1,
+                label_Threads, button_NewThread, list_Threads,
+                label_CurrentThread, field_Search, button_Search, button_ClearSearch,
                 scroll, field_Title, area_Body, button_Post,
-                button_Back, button_Logout, button_Quit);
+                button_Back, button_Logout, button_Quit
+        );
     }
 
-    // ---------- Refresh ----------
+    // ---------- Threads helpers ----------
 
+    private static void refreshThreadList() {
+        List<entityClasses.Thread> threads = ThreadStore.getInstance().getAllThreads();
+        list_Threads.getItems().setAll(threads);
+
+        // Keep selection if possible
+        if (selectedThread != null) {
+            for (entityClasses.Thread t : threads) {
+                if (t.getId() == selectedThread.getId()) {
+                    list_Threads.getSelectionModel().select(t);
+                    return;
+                }
+            }
+        }
+        // Otherwise, no selection
+        selectedThread = null;
+        list_Threads.getSelectionModel().clearSelection();
+        label_CurrentThread.setText("No thread selected");
+        disablePostArea(true);
+    }
+
+    private static void openNewThreadDialog() {
+        Stage dialog = new Stage();
+        dialog.initOwner(theStage);
+        dialog.initModality(Modality.WINDOW_MODAL);
+        dialog.setTitle("Create New Thread");
+
+        Label lblThreadTitle = new Label("Thread title:");
+        TextField tfThreadTitle = new TextField();
+
+        Label lblPostTitle = new Label("First post title:");
+        TextField tfPostTitle = new TextField();
+
+        Label lblPostBody = new Label("First post body:");
+        TextArea taPostBody = new TextArea();
+        taPostBody.setPrefRowCount(5);
+        taPostBody.setWrapText(true);
+
+        Button btnCreate = new Button("Create");
+        Button btnCancel = new Button("Cancel");
+
+        HBox buttonRow = new HBox(10, btnCreate, btnCancel);
+        buttonRow.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox root = new VBox(10,
+                lblThreadTitle, tfThreadTitle,
+                lblPostTitle, tfPostTitle,
+                lblPostBody, taPostBody,
+                buttonRow);
+        root.setStyle("-fx-padding: 15;");
+        Scene sc = new Scene(root, 420, 320);
+        dialog.setScene(sc);
+
+        btnCreate.setOnAction(e -> {
+            String threadTitle = tfThreadTitle.getText() == null ? "" : tfThreadTitle.getText().trim();
+            String postTitle   = tfPostTitle.getText() == null ? "" : tfPostTitle.getText().trim();
+            String postBody    = taPostBody.getText() == null ? "" : taPostBody.getText().trim();
+
+            if (threadTitle.isBlank() || postTitle.isBlank() || postBody.isBlank()) {
+                return; // silently ignore invalid input; instructor may add alerts later
+            }
+
+            // Create thread in DB
+            entityClasses.Thread thread =
+                    ThreadStore.getInstance().createThread(threadTitle, theUser.getUserName());
+            if (thread == null) return;
+
+            // Create first post in that thread
+            ModelStaffPosts.addPostToThread(theUser, thread, postTitle, postBody);
+            PostStore.getInstance().reloadFromDatabase();
+
+            // Refresh UI
+            ThreadStore.getInstance().loadFromDatabase();
+            refreshThreadList();
+            // Select the new thread explicitly
+            for (entityClasses.Thread t : list_Threads.getItems()) {
+                if (t.getId() == thread.getId()) {
+                    list_Threads.getSelectionModel().select(t);
+                    selectedThread = t;
+                    break;
+                }
+            }
+            refreshPostsForThread(selectedThread);
+
+            dialog.close();
+        });
+
+        btnCancel.setOnAction(e -> dialog.close());
+
+        dialog.showAndWait();
+    }
+
+    private static void disablePostArea(boolean disabled) {
+        field_Title.setDisable(disabled);
+        area_Body.setDisable(disabled);
+        button_Post.setDisable(disabled);
+        field_Search.setDisable(disabled);
+        button_Search.setDisable(disabled);
+        button_ClearSearch.setDisable(disabled);
+    }
+
+    // ---------- Refresh posts (thread-aware) ----------
+
+    /** Called by controllers without a thread; uses current selection. */
     protected static void refreshPosts() {
+        refreshPostsForThread(selectedThread);
+    }
+
+    /**
+     * Refresh the posts for a given thread. If {@code thread} is null,
+     * shows a placeholder and disables composer/search.
+     */
+    protected static void refreshPostsForThread(entityClasses.Thread thread) {
         postContainer.getChildren().clear();
-        List<Post> posts = ControllerStaffPosts.getPostsForView();
+
+        if (thread == null) {
+            label_CurrentThread.setText("No thread selected");
+            disablePostArea(true);
+            Label placeholder = new Label("Select a thread on the left to view its posts.");
+            placeholder.setStyle("-fx-text-fill:#777; -fx-font-size:13;");
+            postContainer.getChildren().add(placeholder);
+            return;
+        }
+
+        selectedThread = thread;
+        label_CurrentThread.setText("Thread: " + thread.getTitle());
+        disablePostArea(false);
+
+        List<Post> posts = PostStore.getInstance().getPostsForThread(thread.getId());
+        if (currentSearch != null && !currentSearch.isBlank()) {
+            String q = currentSearch.toLowerCase();
+            posts = posts.stream()
+                    .filter(p -> (p.getTitle() != null && p.getTitle().toLowerCase().contains(q)) ||
+                                 (p.getBody()  != null && p.getBody().toLowerCase().contains(q)))
+                    .toList();
+        }
 
         for (Post post : posts) {
             VBox card = new VBox(8);
             card.setStyle("-fx-border-color:#ddd; -fx-background-color:#f9f9f9; "
                     + "-fx-padding:10; -fx-border-radius:8; -fx-background-radius:8;");
-            card.setPrefWidth(width - 100);
+            card.setPrefWidth(width - THREAD_COLUMN_WIDTH - 70);
 
             // ----- Title + Body -----
             Label titleLbl = new Label(post.getTitle());
             titleLbl.setStyle("-fx-font-size:14; -fx-font-weight:bold;");
+            titleLbl.setWrapText(true);
+            titleLbl.setMaxWidth(width - THREAD_COLUMN_WIDTH - 220);
+            titleLbl.setTextOverrun(OverrunStyle.WORD_ELLIPSIS);
+
             Label bodyLbl = new Label(post.getBody());
             bodyLbl.setStyle("-fx-font-size:13;");
+            bodyLbl.setWrapText(true);
+            bodyLbl.setMaxWidth(width - THREAD_COLUMN_WIDTH - 220);
+            bodyLbl.setTextOverrun(OverrunStyle.WORD_ELLIPSIS);
 
             VBox left = new VBox(6, titleLbl, bodyLbl);
             left.setAlignment(Pos.TOP_LEFT);
@@ -175,7 +449,7 @@ public class ViewStaffPosts {
             postRow.setAlignment(Pos.TOP_LEFT);
             HBox.setHgrow(left, Priority.ALWAYS);
 
-            // Fade-in/out on hover
+            // Hover fade for actions
             FadeTransition fadeIn = new FadeTransition(Duration.millis(200), actions);
             fadeIn.setToValue(1);
             FadeTransition fadeOut = new FadeTransition(Duration.millis(200), actions);
@@ -210,40 +484,45 @@ public class ViewStaffPosts {
                         PostStore.getInstance().updatePost(post.getId(), theUser, post.getTitle(), newBody);
                         PostStore.getInstance().reloadFromDatabase();
                     }
-                    refreshPosts();
+                    refreshPostsForThread(selectedThread);
                 });
-                cancel.setOnAction(ev -> refreshPosts());
+                cancel.setOnAction(ev -> refreshPostsForThread(selectedThread));
             });
 
             delBtn.setOnAction(e -> {
-                ControllerStaffPosts.performDeletePost(theUser, post);
+                if (confirmDeletePost()) {
+                    ControllerStaffPosts.performDeletePost(theUser, post);
+                }
             });
 
-            // ----- Combine -----
             card.getChildren().addAll(postRow, repliesBox, replyBox);
             postContainer.getChildren().add(card);
+        }
+
+        if (posts.isEmpty()) {
+            Label empty = new Label("No posts in this thread yet.");
+            empty.setStyle("-fx-text-fill:#777; -fx-font-size:13;");
+            postContainer.getChildren().add(empty);
         }
     }
 
     // ---------- Render Reply ----------
+
     private static HBox renderReply(Reply r) {
         boolean edited = r.getUpdatedAt() != null && r.getCreatedAt() != null
                 && r.getUpdatedAt().isAfter(r.getCreatedAt().plusSeconds(1));
 
-        // ===== Outer layout =====
         HBox replyRow = new HBox(10);
         replyRow.setAlignment(Pos.TOP_LEFT);
-        replyRow.setPrefWidth(width - 100);
+        replyRow.setPrefWidth(width - THREAD_COLUMN_WIDTH - 70);
 
-        // ===== LEFT SIDE — reply text =====
         Label rBodyLbl = new Label("↳ " + r.getAuthor() + ": " + r.getBody());
         rBodyLbl.setStyle("-fx-font-size: 12; -fx-text-fill: #333;");
         rBodyLbl.setWrapText(true);
-        rBodyLbl.setMaxWidth(width - 250);
-        rBodyLbl.setPrefWidth(width - 260);
+        rBodyLbl.setMaxWidth(width - THREAD_COLUMN_WIDTH - 220);
+        rBodyLbl.setPrefWidth(width - THREAD_COLUMN_WIDTH - 230);
         HBox.setHgrow(rBodyLbl, Priority.ALWAYS);
 
-        // ===== RIGHT SIDE — timestamp (top) + buttons (below) =====
         VBox rightReply = new VBox(3);
         rightReply.setAlignment(Pos.TOP_RIGHT);
         rightReply.setPrefWidth(120);
@@ -259,7 +538,7 @@ public class ViewStaffPosts {
 
         HBox rActions = new HBox(5, rEditBtn, rDelBtn);
         rActions.setAlignment(Pos.CENTER_RIGHT);
-        rActions.setOpacity(0.0); // hidden initially
+        rActions.setOpacity(0.0);
         rActions.setVisible(true);
 
         rightReply.getChildren().addAll(rMeta, rActions);
@@ -268,11 +547,9 @@ public class ViewStaffPosts {
         replyRow.getChildren().addAll(rBodyLbl, rightReply);
         HBox.setHgrow(rBodyLbl, Priority.ALWAYS);
 
-        // ===== Hover fade effect =====
         FadeTransition fadeIn = new FadeTransition(Duration.millis(200), rActions);
         fadeIn.setFromValue(0);
         fadeIn.setToValue(1);
-
         FadeTransition fadeOut = new FadeTransition(Duration.millis(200), rActions);
         fadeOut.setFromValue(1);
         fadeOut.setToValue(0);
@@ -280,34 +557,30 @@ public class ViewStaffPosts {
         replyRow.setOnMouseEntered(e -> fadeIn.playFromStart());
         replyRow.setOnMouseExited(e -> fadeOut.playFromStart());
 
-        // ===== Edit logic =====
         rEditBtn.setOnAction(e -> {
             TextArea editArea = new TextArea(r.getBody());
             editArea.setPrefRowCount(2);
-            editArea.setPrefWidth(width - 420);
+            editArea.setPrefWidth(width - THREAD_COLUMN_WIDTH - 230);
             Button save = new Button("Save");
             Button cancel = new Button("Cancel");
             HBox editor = new HBox(6, editArea, save, cancel);
             int idx = ((VBox) replyRow.getParent()).getChildren().indexOf(replyRow);
             ((VBox) replyRow.getParent()).getChildren().set(idx, editor);
 
-            save.setOnAction(ev -> {
-                ControllerStaffPosts.performReplyEdit(r.getId(), theUser, editArea.getText());
-                refreshPosts();
-            });
-            cancel.setOnAction(ev -> refreshPosts());
+            save.setOnAction(ev ->
+                    ControllerStaffPosts.performReplyEdit(r.getId(), theUser, editArea.getText()));
+            cancel.setOnAction(ev -> refreshPostsForThread(selectedThread));
         });
 
-        // ===== Delete logic =====
         rDelBtn.setOnAction(e -> {
-            ControllerStaffPosts.performReplyDelete(r.getId(), theUser);
-            refreshPosts();
+            if (confirmDeleteReply()) {
+                ControllerStaffPosts.performReplyDelete(r.getId(), theUser);
+            }
         });
+
 
         return replyRow;
     }
-
-
 
     // ---------- Reply Composer ----------
 
@@ -317,11 +590,11 @@ public class ViewStaffPosts {
         replyArea.setPromptText("Write a reply...");
         replyArea.setPrefRowCount(3);
         replyArea.setWrapText(true);
-        replyArea.setPrefWidth(width - 300);
+        replyArea.setPrefWidth(width - THREAD_COLUMN_WIDTH - 260);
 
-        Button send = new Button("Reply");
+        Button send   = new Button("Reply");
         Button cancel = new Button("Cancel");
-        HBox buttons = new HBox(8, send, cancel);
+        HBox buttons  = new HBox(8, send, cancel);
         VBox composer = new VBox(6, replyArea, buttons);
         composer.setOpacity(0);
         composer.setVisible(false);
@@ -342,33 +615,109 @@ public class ViewStaffPosts {
     // ---------- Animations & UI helpers ----------
 
     private static void slideToggle(Region region, boolean expand) {
-        double from = expand ? 0 : region.getHeight();
-        double to   = expand ? 120 : 0;
+        double targetOpen = Region.USE_COMPUTED_SIZE;
+
+        if (expand) {
+            region.setVisible(true);
+            region.setManaged(true);
+            region.applyCss();
+            region.layout();
+            targetOpen = Math.max(120, region.prefHeight(-1));
+        }
+
+        double fromH = expand ? 0 : region.getHeight();
+        double toH   = expand ? targetOpen : 0;
         double fromO = expand ? 0 : 1;
         double toO   = expand ? 1 : 0;
 
-        region.setVisible(true);
-        region.setManaged(true);
+        region.setMinHeight(fromH);
+        region.setPrefHeight(fromH);
+        region.setMaxHeight(fromH);
         region.setOpacity(fromO);
-        region.setMinHeight(from);
-        region.setPrefHeight(from);
 
         Timeline tl = new Timeline(
                 new KeyFrame(Duration.ZERO,
-                        new KeyValue(region.opacityProperty(), fromO),
-                        new KeyValue(region.prefHeightProperty(), from)),
+                        new KeyValue(region.minHeightProperty(), fromH),
+                        new KeyValue(region.prefHeightProperty(), fromH),
+                        new KeyValue(region.maxHeightProperty(), fromH),
+                        new KeyValue(region.opacityProperty(), fromO)),
                 new KeyFrame(Duration.millis(220),
-                        new KeyValue(region.opacityProperty(), toO),
-                        new KeyValue(region.prefHeightProperty(), to))
+                        new KeyValue(region.minHeightProperty(), toH),
+                        new KeyValue(region.prefHeightProperty(), toH),
+                        new KeyValue(region.maxHeightProperty(), toH),
+                        new KeyValue(region.opacityProperty(), toO))
         );
+
         tl.setOnFinished(ev -> {
             if (!expand) {
                 region.setVisible(false);
                 region.setManaged(false);
             }
         });
+
         tl.play();
     }
+    
+ // ---------- Custom Confirmation Dialogs (ADD THESE) ----------
+
+    private static boolean confirmDeletePost() {
+        return showConfirmDialog(
+                "Delete Post",
+                "Delete this post?",
+                "Are you sure you want to delete this post? This action cannot be undone.",
+                "Delete"
+        );
+    }
+
+    private static boolean confirmDeleteReply() {
+        return showConfirmDialog(
+                "Delete Reply",
+                "Delete this reply?",
+                "Are you sure you want to delete this reply? This action cannot be undone.",
+                "Delete"
+        );
+    }
+
+    private static boolean showConfirmDialog(String title, String heading, String message, String confirmText) {
+        Stage dialog = new Stage();
+        dialog.initOwner(theStage);
+        dialog.initModality(Modality.WINDOW_MODAL);
+        dialog.setTitle(title);
+
+        Label headingLbl = new Label(heading);
+        headingLbl.setStyle("-fx-font-size: 16; -fx-font-weight: bold;");
+
+        Label msgLbl = new Label(message);
+        msgLbl.setWrapText(true);
+
+        Button cancelBtn = new Button("Cancel");
+        Button confirmBtn = new Button(confirmText);
+        confirmBtn.setStyle("-fx-font-weight: bold;");
+
+        final boolean[] result = { false };
+
+        cancelBtn.setOnAction(e -> { result[0] = false; dialog.close(); });
+        confirmBtn.setOnAction(e -> { result[0] = true; dialog.close(); });
+
+        HBox buttons = new HBox(10, cancelBtn, confirmBtn);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox root = new VBox(12, headingLbl, msgLbl, buttons);
+        root.setStyle("""
+                -fx-padding: 18;
+                -fx-background-color: white;
+                -fx-border-color: #ccc;
+                -fx-border-radius: 12;
+                -fx-background-radius: 12;
+                """);
+
+        Scene sc = new Scene(root, 360, 150);
+        dialog.setScene(sc);
+        dialog.showAndWait();
+
+        return result[0];
+    }
+
 
     private static void setupLabel(Label l, String ff, double f, double w, Pos p, double x, double y) {
         l.setFont(Font.font(ff, f)); l.setMinWidth(w); l.setAlignment(p); l.setLayoutX(x); l.setLayoutY(y);
